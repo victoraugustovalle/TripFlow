@@ -5,6 +5,7 @@ using Serilog.Formatting.Compact;
 using TripFlow.Api.Authentication;
 using TripFlow.Api.Authorization;
 using TripFlow.Api.RateLimiting;
+using TripFlow.Api.RealTime;
 using TripFlow.Api.Swagger;
 using TripFlow.Application;
 using TripFlow.Infrastructure;
@@ -28,6 +29,7 @@ builder.Services.AddInfrastructure(builder.Configuration);
 builder.Services.AddTripFlowAuthentication();
 builder.Services.AddTripAuthorization();
 builder.Services.AddTripFlowRateLimiting();
+builder.Services.AddTripFlowRealTime();
 
 var corsOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? [];
 builder.Services.AddCors(options =>
@@ -93,6 +95,7 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
+app.MapTripFlowRealTime();
 app.MapHealthChecks("/health");
 
 app.Run();

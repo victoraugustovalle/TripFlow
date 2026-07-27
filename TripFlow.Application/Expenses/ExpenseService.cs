@@ -11,10 +11,12 @@ namespace TripFlow.Application.Expenses;
 public class ExpenseService
 {
     private readonly IAppDbContext _db;
+    private readonly ITripNotifier _tripNotifier;
 
-    public ExpenseService(IAppDbContext db)
+    public ExpenseService(IAppDbContext db, ITripNotifier tripNotifier)
     {
         _db = db;
+        _tripNotifier = tripNotifier;
     }
 
     public async Task<ServiceResult<ExpenseDto>> CreateAsync(Guid tripId, CreateExpenseRequest request, CancellationToken ct = default)
@@ -54,7 +56,10 @@ public class ExpenseService
         _db.Expenses.Add(expense);
         await _db.SaveChangesAsync(ct);
 
-        return ServiceResult<ExpenseDto>.Success(ToDto(expense));
+        var dto = ToDto(expense);
+        await _tripNotifier.NotifyExpenseCreatedAsync(tripId, dto, ct);
+
+        return ServiceResult<ExpenseDto>.Success(dto);
     }
 
     public async Task<IReadOnlyList<ExpenseDto>> ListAsync(Guid tripId, CancellationToken ct = default)
@@ -76,6 +81,8 @@ public class ExpenseService
 
         _db.Expenses.Remove(expense);
         await _db.SaveChangesAsync(ct);
+
+        await _tripNotifier.NotifyExpenseDeletedAsync(tripId, expenseId, ct);
         return ServiceResult<bool>.Success(true);
     }
 

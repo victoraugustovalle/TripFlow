@@ -30,6 +30,17 @@ public static class JwtAuthenticationExtensions
                 // essa checagem de denylist por jti a cada request autenticado.
                 options.Events = new JwtBearerEvents
                 {
+                    // WebSocket nao deixa o navegador mandar header Authorization no handshake -
+                    // o cliente SignalR manda o token via query string nesse caso. So aceita isso
+                    // pro path do hub, pra nao abrir um jeito alternativo de mandar token em toda rota.
+                    OnMessageReceived = context =>
+                    {
+                        var accessToken = context.Request.Query["access_token"];
+                        if (!string.IsNullOrEmpty(accessToken) && context.HttpContext.Request.Path.StartsWithSegments("/hubs"))
+                            context.Token = accessToken;
+
+                        return Task.CompletedTask;
+                    },
                     OnTokenValidated = async context =>
                     {
                         var jti = context.Principal?.FindFirst(JwtRegisteredClaimNames.Jti)?.Value;

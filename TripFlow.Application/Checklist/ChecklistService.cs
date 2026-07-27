@@ -9,10 +9,12 @@ namespace TripFlow.Application.Checklist;
 public class ChecklistService
 {
     private readonly IAppDbContext _db;
+    private readonly ITripNotifier _tripNotifier;
 
-    public ChecklistService(IAppDbContext db)
+    public ChecklistService(IAppDbContext db, ITripNotifier tripNotifier)
     {
         _db = db;
+        _tripNotifier = tripNotifier;
     }
 
     public async Task<ChecklistItemDto> CreateAsync(Guid tripId, CreateChecklistItemRequest request, CancellationToken ct = default)
@@ -27,7 +29,11 @@ public class ChecklistService
 
         _db.ChecklistItems.Add(item);
         await _db.SaveChangesAsync(ct);
-        return ToDto(item);
+
+        var dto = ToDto(item);
+        await _tripNotifier.NotifyChecklistItemCreatedAsync(tripId, dto, ct);
+
+        return dto;
     }
 
     public async Task<IReadOnlyList<ChecklistItemDto>> ListAsync(Guid tripId, CancellationToken ct = default)
@@ -52,7 +58,11 @@ public class ChecklistService
         item.DueDate = request.DueDate;
 
         await _db.SaveChangesAsync(ct);
-        return ServiceResult<ChecklistItemDto>.Success(ToDto(item));
+
+        var dto = ToDto(item);
+        await _tripNotifier.NotifyChecklistItemUpdatedAsync(tripId, dto, ct);
+
+        return ServiceResult<ChecklistItemDto>.Success(dto);
     }
 
     public async Task<ServiceResult<bool>> DeleteAsync(Guid tripId, Guid itemId, CancellationToken ct = default)
@@ -63,6 +73,8 @@ public class ChecklistService
 
         _db.ChecklistItems.Remove(item);
         await _db.SaveChangesAsync(ct);
+
+        await _tripNotifier.NotifyChecklistItemDeletedAsync(tripId, itemId, ct);
         return ServiceResult<bool>.Success(true);
     }
 
