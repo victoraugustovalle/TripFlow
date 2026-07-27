@@ -20,5 +20,8 @@ public class TripConfiguration : IEntityTypeConfiguration<Trip>
         builder.HasMany(t => t.Expenses).WithOne(e => e.Trip).HasForeignKey(e => e.TripId).OnDelete(DeleteBehavior.Cascade);
         builder.HasMany(t => t.Budgets).WithOne(b => b.Trip).HasForeignKey(b => b.TripId).OnDelete(DeleteBehavior.Cascade);
         builder.HasMany(t => t.ChecklistItems).WithOne(c => c.Trip).HasForeignKey(c => c.TripId).OnDelete(DeleteBehavior.Cascade);
+        builder.HasMany(t => t.ItineraryItems).WithOne(i => i.Trip).HasForeignKey(i => i.TripId).OnDelete(DeleteBehavior.Cascade);
+        builder.HasMany(t => t.Reservations).WithOne(r => r.Trip).HasForeignKey(r => r.TripId).OnDelete(DeleteBehavior.Cascade);
+        builder.HasMany(t => t.Documents).WithOne(d => d.Trip).HasForeignKey(d => d.TripId).OnDelete(DeleteBehavior.Cascade);
     }
 }

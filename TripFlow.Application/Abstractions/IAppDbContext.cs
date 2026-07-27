@@ -19,6 +19,9 @@ public interface IAppDbContext
     DbSet<ExpenseSplit> ExpenseSplits { get; }
     DbSet<Budget> Budgets { get; }
     DbSet<ChecklistItem> ChecklistItems { get; }
+    DbSet<ItineraryItem> ItineraryItems { get; }
+    DbSet<Reservation> Reservations { get; }
+    DbSet<Document> Documents { get; }
 
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 }

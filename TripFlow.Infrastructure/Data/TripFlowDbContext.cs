@@ -19,6 +19,9 @@ public class TripFlowDbContext : DbContext, IAppDbContext
     public DbSet<ExpenseSplit> ExpenseSplits => Set<ExpenseSplit>();
     public DbSet<Budget> Budgets => Set<Budget>();
     public DbSet<ChecklistItem> ChecklistItems => Set<ChecklistItem>();
+    public DbSet<ItineraryItem> ItineraryItems => Set<ItineraryItem>();
+    public DbSet<Reservation> Reservations => Set<Reservation>();
+    public DbSet<Document> Documents => Set<Document>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

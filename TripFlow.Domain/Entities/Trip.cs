@@ -20,4 +20,7 @@ public class Trip
     public ICollection<Expense> Expenses { get; set; } = new List<Expense>();
     public ICollection<Budget> Budgets { get; set; } = new List<Budget>();
     public ICollection<ChecklistItem> ChecklistItems { get; set; } = new List<ChecklistItem>();
+    public ICollection<ItineraryItem> ItineraryItems { get; set; } = new List<ItineraryItem>();
+    public ICollection<Reservation> Reservations { get; set; } = new List<Reservation>();
+    public ICollection<Document> Documents { get; set; } = new List<Document>();
 }
