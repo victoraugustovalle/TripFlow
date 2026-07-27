@@ -17,6 +17,7 @@ public class AuthService
     private readonly IGoogleAuthService _googleAuthService;
     private readonly IEmailSender _emailSender;
     private readonly AuthPolicyOptions _policy;
+    private readonly TwoFactorOptions _twoFactorOptions;
     private readonly ILogger<AuthService> _logger;
 
     private readonly Lazy<string> _dummyPasswordHash;
@@ -28,6 +29,7 @@ public class AuthService
         IGoogleAuthService googleAuthService,
         IEmailSender emailSender,
         IOptions<AuthPolicyOptions> policy,
+        IOptions<TwoFactorOptions> twoFactorOptions,
         ILogger<AuthService> logger)
     {
         _db = db;
@@ -36,6 +38,7 @@ public class AuthService
         _googleAuthService = googleAuthService;
         _emailSender = emailSender;
         _policy = policy.Value;
+        _twoFactorOptions = twoFactorOptions.Value;
         _logger = logger;
 
         // Usado no login quando o e-mail nao existe, so pra gastar o mesmo tempo de CPU
@@ -90,39 +93,61 @@ public class AuthService
         return ServiceResult<bool>.Success(true);
     }
 
-    public async Task<ServiceResult<AuthResult>> LoginAsync(LoginRequest request, string? ip, CancellationToken ct = default)
+    public async Task<ServiceResult<LoginResult>> LoginAsync(LoginRequest request, string? ip, CancellationToken ct = default)
     {
         var user = await FindByEmailAsync(request.Email, ct);
 
         if (user is null)
         {
             _passwordHasher.Verify(request.Password, _dummyPasswordHash.Value);
-            return ServiceResult<AuthResult>.Failure(ServiceErrorType.Unauthorized, "E-mail ou senha invalidos.");
+            return ServiceResult<LoginResult>.Failure(ServiceErrorType.Unauthorized, "E-mail ou senha invalidos.");
         }
 
         if (user.IsLockedOut)
-            return ServiceResult<AuthResult>.Failure(ServiceErrorType.LockedOut, "Conta temporariamente bloqueada por excesso de tentativas. Tente novamente mais tarde.");
+            return ServiceResult<LoginResult>.Failure(ServiceErrorType.LockedOut, "Conta temporariamente bloqueada por excesso de tentativas. Tente novamente mais tarde.");
 
         if (user.PasswordHash is null || !_passwordHasher.Verify(request.Password, user.PasswordHash))
         {
             await RegisterFailedLoginAsync(user, ct);
-            return ServiceResult<AuthResult>.Failure(ServiceErrorType.Unauthorized, "E-mail ou senha invalidos.");
+            return ServiceResult<LoginResult>.Failure(ServiceErrorType.Unauthorized, "E-mail ou senha invalidos.");
         }
 
         user.FailedLoginAttempts = 0;
         user.LockedUntil = null;
 
+        if (user.TwoFactorEnabled)
+        {
+            var challenge = TokenHasher.GenerateUrlSafeToken();
+            user.TwoFactorChallengeTokenHash = TokenHasher.Hash(challenge);
+            user.TwoFactorChallengeExpiresAt = DateTime.UtcNow.AddMinutes(_twoFactorOptions.ChallengeExpiryMinutes);
+            await _db.SaveChangesAsync(ct);
+
+            return ServiceResult<LoginResult>.Success(new LoginResult(true, challenge, null));
+        }
+
         var result = await IssueTokensAsync(user, Guid.NewGuid(), ip, ct);
         await _db.SaveChangesAsync(ct);
 
-        return ServiceResult<AuthResult>.Success(result);
+        return ServiceResult<LoginResult>.Success(new LoginResult(false, null, result));
     }
 
-    public async Task<ServiceResult<AuthResult>> GoogleLoginAsync(GoogleLoginRequest request, string? ip, CancellationToken ct = default)
+    /// <summary>Emite o par de tokens pra um usuario que ja provou o segundo fator (chamado pelo TwoFactorService apos validar o codigo TOTP ou o codigo de recuperacao).</summary>
+    public async Task<AuthResult> IssueTokensForVerifiedUserAsync(Guid userId, string? ip, CancellationToken ct = default)
+    {
+        var user = await _db.Users.FirstOrDefaultAsync(u => u.Id == userId, ct)
+            ?? throw new InvalidOperationException("Usuario nao encontrado ao emitir token pos-verificacao.");
+
+        var result = await IssueTokensAsync(user, Guid.NewGuid(), ip, ct);
+        await _db.SaveChangesAsync(ct);
+
+        return result;
+    }
+
+    public async Task<ServiceResult<LoginResult>> GoogleLoginAsync(GoogleLoginRequest request, string? ip, CancellationToken ct = default)
     {
         var googleUser = await _googleAuthService.ValidateIdTokenAsync(request.IdToken, ct);
         if (googleUser is null || !googleUser.EmailVerified)
-            return ServiceResult<AuthResult>.Failure(ServiceErrorType.Unauthorized, "Token do Google invalido.");
+            return ServiceResult<LoginResult>.Failure(ServiceErrorType.Unauthorized, "Token do Google invalido.");
 
         var normalizedEmail = googleUser.Email.Trim().ToLowerInvariant();
         var user = await FindByEmailAsync(normalizedEmail, ct);
@@ -143,10 +168,23 @@ public class AuthService
             user.GoogleId = googleUser.GoogleId;
         }
 
+        // Login com Google nao pula o segundo fator - se a conta tem 2FA ligado, precisa do
+        // codigo do app autenticador mesmo entrando pelo Google (senao o 2FA vira so decorativo
+        // pra quem tambem linkou login social).
+        if (user.TwoFactorEnabled)
+        {
+            var challenge = TokenHasher.GenerateUrlSafeToken();
+            user.TwoFactorChallengeTokenHash = TokenHasher.Hash(challenge);
+            user.TwoFactorChallengeExpiresAt = DateTime.UtcNow.AddMinutes(_twoFactorOptions.ChallengeExpiryMinutes);
+            await _db.SaveChangesAsync(ct);
+
+            return ServiceResult<LoginResult>.Success(new LoginResult(true, challenge, null));
+        }
+
         var result = await IssueTokensAsync(user, Guid.NewGuid(), ip, ct);
         await _db.SaveChangesAsync(ct);
 
-        return ServiceResult<AuthResult>.Success(result);
+        return ServiceResult<LoginResult>.Success(new LoginResult(false, null, result));
     }
 
     public async Task<ServiceResult<AuthResult>> RefreshAsync(string rawRefreshToken, string? ip, CancellationToken ct = default)
@@ -306,5 +344,5 @@ public class AuthService
         }
     }
 
-    private static UserDto ToDto(User user) => new(user.Id, user.Name, user.Email, user.GlobalRole, user.EmailConfirmed);
+    private static UserDto ToDto(User user) => new(user.Id, user.Name, user.Email, user.GlobalRole, user.EmailConfirmed, user.TwoFactorEnabled);
 }

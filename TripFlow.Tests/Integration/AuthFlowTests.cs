@@ -45,7 +45,9 @@ public class AuthFlowTests : IDisposable
         var loginResponse = await _client.PostAsJsonAsync("/api/auth/login", new LoginRequest(email, password));
         loginResponse.StatusCode.Should().Be(HttpStatusCode.OK);
 
-        var auth = await loginResponse.Content.ReadFromJsonAsync<AccessTokenResponse>();
+        var loginResult = await loginResponse.Content.ReadFromJsonAsync<LoginResponse>();
+        loginResult!.RequiresTwoFactor.Should().BeFalse();
+        var auth = loginResult.Auth;
         auth!.AccessToken.Should().NotBeNullOrEmpty();
 
         loginResponse.Headers.TryGetValues("Set-Cookie", out var cookies).Should().BeTrue();

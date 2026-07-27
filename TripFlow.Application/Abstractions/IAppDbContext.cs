@@ -22,6 +22,7 @@ public interface IAppDbContext
     DbSet<ItineraryItem> ItineraryItems { get; }
     DbSet<Reservation> Reservations { get; }
     DbSet<Document> Documents { get; }
+    DbSet<TwoFactorRecoveryCode> TwoFactorRecoveryCodes { get; }
 
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 }

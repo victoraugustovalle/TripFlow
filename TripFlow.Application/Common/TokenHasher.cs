@@ -34,4 +34,13 @@ public static class TokenHasher
         return Convert.ToBase64String(RandomNumberGenerator.GetBytes(32))
             .Replace("+", "-").Replace("/", "_").Replace("=", "");
     }
+
+    private const string RecoveryCodeAlphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; // sem 0/O, 1/I/L - dificeis de distinguir escritos a mao
+
+    /// <summary>Codigo de recuperacao de 2FA, formato "XXXXX-XXXXX" - pensado pra ser digitado por alguem, nao so colado.</summary>
+    public static string GenerateRecoveryCode()
+    {
+        var chars = RandomNumberGenerator.GetBytes(10).Select(b => RecoveryCodeAlphabet[b % RecoveryCodeAlphabet.Length]).ToArray();
+        return $"{new string(chars[..5])}-{new string(chars[5..])}";
+    }
 }

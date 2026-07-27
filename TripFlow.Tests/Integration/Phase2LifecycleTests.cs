@@ -32,10 +32,10 @@ public class Phase2LifecycleTests : IDisposable
         await client.PostAsJsonAsync("/api/auth/confirm-email", new ConfirmEmailRequest(email, code!));
 
         var loginResponse = await client.PostAsJsonAsync("/api/auth/login", new LoginRequest(email, password));
-        var auth = await loginResponse.Content.ReadFromJsonAsync<AccessTokenResponse>();
+        var loginResult = await loginResponse.Content.ReadFromJsonAsync<LoginResponse>();
 
         var authedClient = _factory.CreateClient();
-        authedClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", auth!.AccessToken);
+        authedClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", loginResult!.Auth!.AccessToken);
         return (authedClient, email);
     }
 

@@ -11,6 +11,7 @@ using TripFlow.Application.Itinerary;
 using TripFlow.Application.Participants;
 using TripFlow.Application.Reservations;
 using TripFlow.Application.Trips;
+using TripFlow.Application.TwoFactor;
 
 namespace TripFlow.Application;
 
@@ -19,6 +20,7 @@ public static class DependencyInjection
     public static IServiceCollection AddApplication(this IServiceCollection services, IConfiguration configuration)
     {
         services.Configure<AuthPolicyOptions>(configuration.GetSection(AuthPolicyOptions.SectionName));
+        services.Configure<TwoFactorOptions>(configuration.GetSection(TwoFactorOptions.SectionName));
 
         services.AddValidatorsFromAssembly(typeof(DependencyInjection).Assembly);
 
@@ -31,6 +33,7 @@ public static class DependencyInjection
         services.AddScoped<ItineraryService>();
         services.AddScoped<ReservationService>();
         services.AddScoped<DocumentService>();
+        services.AddScoped<TwoFactorService>();
 
         return services;
     }

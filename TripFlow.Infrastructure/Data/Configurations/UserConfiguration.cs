@@ -18,5 +18,7 @@ public class UserConfiguration : IEntityTypeConfiguration<User>
         builder.Property(u => u.GoogleId).HasMaxLength(64);
         builder.Property(u => u.EmailConfirmationCodeHash).HasMaxLength(128);
         builder.Property(u => u.PasswordResetTokenHash).HasMaxLength(128);
+        builder.Property(u => u.TwoFactorSecret).HasMaxLength(200);
+        builder.Property(u => u.TwoFactorChallengeTokenHash).HasMaxLength(128);
     }
 }

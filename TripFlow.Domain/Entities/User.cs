@@ -25,9 +25,18 @@ public class User
     public int FailedLoginAttempts { get; set; }
     public DateTime? LockedUntil { get; set; }
 
+    public bool TwoFactorEnabled { get; set; }
+
+    /// <summary>Criptografado em repouso (nao e hash - precisa ser lido de volta pra validar o codigo TOTP).</summary>
+    public string? TwoFactorSecret { get; set; }
+
+    public string? TwoFactorChallengeTokenHash { get; set; }
+    public DateTime? TwoFactorChallengeExpiresAt { get; set; }
+
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
     public bool IsLockedOut => LockedUntil is not null && LockedUntil > DateTime.UtcNow;
 
     public ICollection<TripParticipant> TripParticipations { get; set; } = new List<TripParticipant>();
+    public ICollection<TwoFactorRecoveryCode> TwoFactorRecoveryCodes { get; set; } = new List<TwoFactorRecoveryCode>();
 }

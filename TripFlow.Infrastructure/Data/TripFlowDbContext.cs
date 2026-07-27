@@ -6,8 +6,11 @@ namespace TripFlow.Infrastructure.Data;
 
 public class TripFlowDbContext : DbContext, IAppDbContext
 {
-    public TripFlowDbContext(DbContextOptions<TripFlowDbContext> options) : base(options)
+    private readonly ISecretProtector _secretProtector;
+
+    public TripFlowDbContext(DbContextOptions<TripFlowDbContext> options, ISecretProtector secretProtector) : base(options)
     {
+        _secretProtector = secretProtector;
     }
 
     public DbSet<User> Users => Set<User>();
@@ -22,10 +25,20 @@ public class TripFlowDbContext : DbContext, IAppDbContext
     public DbSet<ItineraryItem> ItineraryItems => Set<ItineraryItem>();
     public DbSet<Reservation> Reservations => Set<Reservation>();
     public DbSet<Document> Documents => Set<Document>();
+    public DbSet<TwoFactorRecoveryCode> TwoFactorRecoveryCodes => Set<TwoFactorRecoveryCode>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(TripFlowDbContext).Assembly);
+
+        // Criptografado em repouso, nao hasheado - o Otp.NET precisa do valor em claro de
+        // volta pra calcular o codigo TOTP. A conversao fica aqui (nao numa IEntityTypeConfiguration
+        // separada) porque precisa do ISecretProtector injetado, e configuration classes
+        // sao instanciadas sem DI pelo ApplyConfigurationsFromAssembly.
+        modelBuilder.Entity<User>().Property(u => u.TwoFactorSecret).HasConversion(
+            plain => plain == null ? null : _secretProtector.Protect(plain),
+            stored => stored == null ? null : _secretProtector.Unprotect(stored));
+
         base.OnModelCreating(modelBuilder);
     }
 }

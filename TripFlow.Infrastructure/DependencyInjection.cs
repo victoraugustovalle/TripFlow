@@ -32,6 +32,10 @@ public static class DependencyInjection
         services.AddScoped<IGoogleAuthService, GoogleAuthService>();
         services.AddScoped<IEmailSender, SmtpEmailSender>();
 
+        services.AddSingleton<ISecretProtector, AesSecretProtector>();
+        services.AddSingleton<ITotpService, TotpService>();
+        services.AddSingleton<IQrCodeGenerator, QRCoderQrCodeGenerator>();
+
         services.AddHttpClient<IGeocodingService, NominatimGeocodingService>(client =>
         {
             client.BaseAddress = new Uri("https://nominatim.openstreetmap.org/");
