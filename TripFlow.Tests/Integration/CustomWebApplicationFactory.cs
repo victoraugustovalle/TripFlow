@@ -28,6 +28,8 @@ public class CustomWebApplicationFactory : WebApplicationFactory<Program>
     {
         _connection.Open();
 
+        builder.UseEnvironment("Testing");
+
         builder.ConfigureAppConfiguration((_, config) =>
         {
             config.AddInMemoryCollection(new Dictionary<string, string?>
@@ -55,6 +57,10 @@ public class CustomWebApplicationFactory : WebApplicationFactory<Program>
 
     protected override IHost CreateHost(IHostBuilder builder)
     {
+        // No ambiente "Testing" o Program.cs pula o Database.Migrate() (as migrations
+        // foram geradas pro Postgres - aplicar contra SQLite dispara falso positivo de
+        // "pending model changes"). EnsureCreated() so cria o schema a partir do modelo
+        // atual, sem depender do historico de migrations.
         var host = base.CreateHost(builder);
 
         using var scope = host.Services.CreateScope();

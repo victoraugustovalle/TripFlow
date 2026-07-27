@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.HttpOverrides;
+using Microsoft.EntityFrameworkCore;
 using Serilog;
 using Serilog.Formatting.Compact;
 using TripFlow.Api.Authentication;
@@ -7,6 +8,7 @@ using TripFlow.Api.RateLimiting;
 using TripFlow.Api.Swagger;
 using TripFlow.Application;
 using TripFlow.Infrastructure;
+using TripFlow.Infrastructure.Data;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -50,6 +52,15 @@ builder.Services.Configure<ForwardedHeadersOptions>(options =>
 });
 
 var app = builder.Build();
+
+// Nos testes de integracao (WebApplicationFactory com ambiente "Testing") o banco e
+// SQLite so pra teste, e a factory cuida do proprio schema - rodar migration gerada
+// pro Postgres contra outro provider dispara falso positivo de "model changes".
+if (!app.Environment.IsEnvironment("Testing"))
+{
+    using var migrationScope = app.Services.CreateScope();
+    migrationScope.ServiceProvider.GetRequiredService<TripFlowDbContext>().Database.Migrate();
+}
 
 if (app.Environment.IsDevelopment())
 {
