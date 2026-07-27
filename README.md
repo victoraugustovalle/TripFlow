@@ -40,6 +40,30 @@ TripFlow.Tests/           testes de unidade e integração
 - Upload de documento valida o arquivo pelos **bytes de verdade** (magic number), não só pelo Content-Type declarado — um `.html` disfarçado de `.pdf` é rejeitado
 - Download de documento sempre passa pela API (nunca expõe URL direta do bucket), então a autorização por papel na viagem é checada antes de qualquer byte sair
 - Rate limit próprio pro geocoding, com chave **global** (não por usuário) — respeita o limite de uso do Nominatim (1 req/s pro serviço inteiro)
+- Hub do SignalR exige o mesmo JWT dos endpoints REST; entrar no grupo de uma viagem checa participação aceita (não dá pra escutar atualização de viagem que você não faz parte)
+
+## Tempo real (SignalR)
+
+Quem estiver com uma viagem aberta recebe atualização ao vivo quando alguém adiciona um gasto ou marca um item do checklist, sem precisar dar F5.
+
+- **Hub**: `/hubs/trip`
+- **Autenticação**: o token JWT vai via `accessTokenFactory` do cliente SignalR (WebSocket não permite header customizado no handshake do navegador, então o token vai por query string só nesse path)
+- **Uso**: depois de conectar, chama `JoinTrip(tripId)` — o servidor confere se você é participante aceito daquela viagem antes de te colocar no grupo; se não for, a chamada lança `HubException`
+- **Eventos recebidos**: `ExpenseCreated`, `ExpenseDeleted`, `ChecklistItemCreated`, `ChecklistItemUpdated`, `ChecklistItemDeleted`
+
+Exemplo (cliente JS):
+
+```js
+const connection = new signalR.HubConnectionBuilder()
+  .withUrl("/hubs/trip", { accessTokenFactory: () => accessToken })
+  .build();
+
+connection.on("ExpenseCreated", (expense) => { /* atualiza a lista na tela */ });
+connection.on("ChecklistItemUpdated", (item) => { /* atualiza o item marcado */ });
+
+await connection.start();
+await connection.invoke("JoinTrip", tripId);
+```
 
 ## Rodando localmente
 
@@ -103,7 +127,7 @@ Os testes de integração usam SQLite em memória (não precisam do Postgres rod
 
 - [x] **Fase 1** — autenticação completa (JWT + refresh + Google), Viagem, Participantes, Gastos + Orçamento, Checklist
 - [x] **Fase 2** — Roteiro, Mapa (geocoding via Nominatim), Documentos (upload validado + storage externo), Reservas vinculadas ao roteiro
-- [ ] **Fase 3** — tempo real (SignalR), 2FA, notificações, frontend
+- [ ] **Fase 3** — tempo real ([x] SignalR — gastos e checklist), 2FA, notificações, frontend
 
 ## Deploy
 
