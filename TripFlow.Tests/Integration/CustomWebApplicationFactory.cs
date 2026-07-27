@@ -1,3 +1,4 @@
+using System.Security.Cryptography;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Data.Sqlite;
@@ -37,7 +38,8 @@ public class CustomWebApplicationFactory : WebApplicationFactory<Program>
                 ["Jwt:PrivateKeyPem"] = TestRsaKeys.PrivateKeyPem,
                 ["Jwt:PublicKeyPem"] = TestRsaKeys.PublicKeyPem,
                 ["Jwt:Issuer"] = "TripFlow.Tests",
-                ["Jwt:Audience"] = "TripFlow.Tests.Api"
+                ["Jwt:Audience"] = "TripFlow.Tests.Api",
+                ["TwoFactor:EncryptionKeyBase64"] = Convert.ToBase64String(RandomNumberGenerator.GetBytes(32))
             });
         });
 
