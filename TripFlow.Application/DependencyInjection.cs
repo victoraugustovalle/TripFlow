@@ -6,7 +6,9 @@ using TripFlow.Application.Budgets;
 using TripFlow.Application.Checklist;
 using TripFlow.Application.Common;
 using TripFlow.Application.Expenses;
+using TripFlow.Application.Itinerary;
 using TripFlow.Application.Participants;
+using TripFlow.Application.Reservations;
 using TripFlow.Application.Trips;
 
 namespace TripFlow.Application;
@@ -25,6 +27,8 @@ public static class DependencyInjection
         services.AddScoped<ExpenseService>();
         services.AddScoped<BudgetService>();
         services.AddScoped<ChecklistService>();
+        services.AddScoped<ItineraryService>();
+        services.AddScoped<ReservationService>();
 
         return services;
     }
