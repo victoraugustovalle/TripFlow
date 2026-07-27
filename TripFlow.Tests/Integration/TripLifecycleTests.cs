@@ -12,6 +12,7 @@ using Xunit;
 
 namespace TripFlow.Tests.Integration;
 
+[Collection("Integration")]
 public class TripLifecycleTests : IDisposable
 {
     private readonly CustomWebApplicationFactory _factory = new();

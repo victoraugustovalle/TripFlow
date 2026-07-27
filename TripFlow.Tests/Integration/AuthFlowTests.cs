@@ -11,6 +11,7 @@ namespace TripFlow.Tests.Integration;
 // Uma factory nova por teste (em vez de IClassFixture compartilhada) - o rate limiter
 // de "auth" e apertado de proposito (5/min), entao dividir estado entre testes faria
 // um teste derrubar o outro com 429 sem ter nada a ver com o que esta sendo testado.
+[Collection("Integration")]
 public class AuthFlowTests : IDisposable
 {
     private readonly CustomWebApplicationFactory _factory = new();
