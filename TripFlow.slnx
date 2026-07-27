@@ -1,0 +1,7 @@
+<Solution>
+  <Project Path="TripFlow.Api/TripFlow.Api.csproj" />
+  <Project Path="TripFlow.Application/TripFlow.Application.csproj" />
+  <Project Path="TripFlow.Domain/TripFlow.Domain.csproj" />
+  <Project Path="TripFlow.Infrastructure/TripFlow.Infrastructure.csproj" />
+  <Project Path="TripFlow.Tests/TripFlow.Tests.csproj" />
+</Solution>

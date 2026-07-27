@@ -1,0 +1,32 @@
+## .NET
+bin/
+obj/
+out/
+*.user
+*.suo
+
+## IDE
+.vs/
+.vscode/
+.idea/
+*.swp
+
+## Secrets - nunca comitar valor real, só o appsettings.json com placeholder
+appsettings.Development.json
+appsettings.Production.json
+appsettings.Local.json
+*.pfx
+
+## Testes / cobertura
+[Tt]est[Rr]esult*/
+coverage*/
+*.trx
+
+## Banco local (se algum dia rodar sqlite em dev)
+*.db
+*.db-shm
+*.db-wal
+
+## Publish
+*.Publish.xml
+publish/
