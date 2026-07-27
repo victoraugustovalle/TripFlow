@@ -30,3 +30,6 @@ coverage*/
 ## Publish
 *.Publish.xml
 publish/
+
+## Uploads locais (fallback de storage sem R2 configurado - so em dev)
+App_Data/

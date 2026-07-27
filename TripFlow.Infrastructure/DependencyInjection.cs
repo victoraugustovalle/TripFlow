@@ -1,12 +1,15 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using TripFlow.Application.Abstractions;
 using TripFlow.Application.Common;
 using TripFlow.Infrastructure.Data;
 using TripFlow.Infrastructure.Email;
 using TripFlow.Infrastructure.Geocoding;
 using TripFlow.Infrastructure.Security;
+using TripFlow.Infrastructure.Storage;
 
 namespace TripFlow.Infrastructure;
 
@@ -22,6 +25,7 @@ public static class DependencyInjection
         services.Configure<JwtOptions>(configuration.GetSection(JwtOptions.SectionName));
         services.Configure<GoogleAuthOptions>(configuration.GetSection(GoogleAuthOptions.SectionName));
         services.Configure<SmtpOptions>(configuration.GetSection(SmtpOptions.SectionName));
+        services.Configure<FileStorageOptions>(configuration.GetSection(FileStorageOptions.SectionName));
 
         services.AddSingleton<IPasswordHasher, Argon2PasswordHasher>();
         services.AddSingleton<ITokenService, JwtTokenService>();
@@ -32,6 +36,15 @@ public static class DependencyInjection
         {
             client.BaseAddress = new Uri("https://nominatim.openstreetmap.org/");
             client.DefaultRequestHeaders.UserAgent.ParseAdd("TripFlow/1.0 (projeto de portfolio - github.com/victoraugusto3215/TripFlow)");
+        });
+
+        // R2 so entra se estiver configurado - sem credencial, cai pro disco local (dev).
+        services.AddScoped<IFileStorageService>(sp =>
+        {
+            var options = sp.GetRequiredService<IOptions<FileStorageOptions>>();
+            return options.Value.IsR2Configured
+                ? new R2FileStorageService(options)
+                : new LocalDiskFileStorageService(sp.GetRequiredService<ILogger<LocalDiskFileStorageService>>());
         });
 
         return services;
