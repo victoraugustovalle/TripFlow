@@ -35,6 +35,20 @@ public static class RateLimitingExtensions
                     QueueLimit = 0
                 }));
 
+            // Geocoding (Nominatim): a politica de uso deles exige no maximo 1 req/segundo
+            // pro servico inteiro, nao por usuario - por isso a chave de particao e uma
+            // constante, nao o IP de quem chamou. Um pouco de fila (em vez de rejeitar na
+            // hora) absorve picos pequenos sem estourar o limite deles.
+            options.AddPolicy("geocoding", _ => RateLimitPartition.GetFixedWindowLimiter(
+                partitionKey: "nominatim-global",
+                factory: _ => new FixedWindowRateLimiterOptions
+                {
+                    PermitLimit = 1,
+                    Window = TimeSpan.FromSeconds(1),
+                    QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
+                    QueueLimit = 3
+                }));
+
             // Resto da API: generoso o bastante pra uso normal, mas ainda com um teto.
             options.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(context =>
                 RateLimitPartition.GetFixedWindowLimiter(

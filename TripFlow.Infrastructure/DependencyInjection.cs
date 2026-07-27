@@ -5,6 +5,7 @@ using TripFlow.Application.Abstractions;
 using TripFlow.Application.Common;
 using TripFlow.Infrastructure.Data;
 using TripFlow.Infrastructure.Email;
+using TripFlow.Infrastructure.Geocoding;
 using TripFlow.Infrastructure.Security;
 
 namespace TripFlow.Infrastructure;
@@ -26,6 +27,12 @@ public static class DependencyInjection
         services.AddSingleton<ITokenService, JwtTokenService>();
         services.AddScoped<IGoogleAuthService, GoogleAuthService>();
         services.AddScoped<IEmailSender, SmtpEmailSender>();
+
+        services.AddHttpClient<IGeocodingService, NominatimGeocodingService>(client =>
+        {
+            client.BaseAddress = new Uri("https://nominatim.openstreetmap.org/");
+            client.DefaultRequestHeaders.UserAgent.ParseAdd("TripFlow/1.0 (projeto de portfolio - github.com/victoraugusto3215/TripFlow)");
+        });
 
         return services;
     }
