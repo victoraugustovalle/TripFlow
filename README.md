@@ -12,37 +12,103 @@ Projeto de portfólio focado em backend: o objetivo não é só ter endpoints, �
 - **Google OAuth** como método alternativo de login
 - **Serilog** (log estruturado em JSON)
 - **FluentValidation** nas entradas
-- xUnit para testes
+- xUnit (unidade + integração com `WebApplicationFactory` + SQLite em memória)
 
 ## Estrutura
 
 ```
-TripFlow.Domain/          entidades e regras de negócio puras, sem dependência externa
-TripFlow.Application/     casos de uso, DTOs, validators, interfaces (IFileStorageService, IEmailSender...)
-TripFlow.Infrastructure/  EF Core (Postgres), hashing, JWT, storage, e-mail, Google auth
-TripFlow.Api/             controllers, middlewares, Program.cs, Swagger
-TripFlow.Tests/           testes de unidade e integração (xUnit)
+TripFlow.Domain/          entidades e regras de negócio puras (inclui o SettlementCalculator - divisão de gastos)
+TripFlow.Application/     casos de uso, DTOs, validators, interfaces (IPasswordHasher, ITokenService, IEmailSender...)
+TripFlow.Infrastructure/  EF Core (Postgres), Argon2id, JWT, SMTP, Google auth
+TripFlow.Api/             controllers, autenticação/autorização, rate limiting, Swagger, Program.cs
+TripFlow.Tests/           testes de unidade e integração
 ```
+
+## Segurança - o que tem implementado
+
+- Senha com **Argon2id** (parâmetros de custo guardados junto do hash, dá pra endurecer depois sem invalidar senha antiga)
+- **Access token JWT assinado RS256**, curto (15 min por padrão), enviado via header `Authorization: Bearer`
+- **Refresh token** em cookie `HttpOnly` + `Secure` + `SameSite=Strict`, com **rotação a cada uso** e **detecção de reuso**: se um token já usado for apresentado de novo, a família inteira de tokens daquela sessão é revogada
+- **Denylist por `jti`** para revogar um access token antes do vencimento natural (logout, reuso de refresh token detectado)
+- **Login com Google** (valida o `id_token` via `Google.Apis.Auth`) como alternativa ao login por senha
+- **Autorização por recurso**: além do papel global (Admin/User), cada participante tem um papel por viagem (Owner/Editor/Viewer), verificado via policy-based authorization
+- **Rate limiting** diferenciado: login/refresh (alvo natural de brute force) em um limite mais apertado que registro/confirmação/reset
+- Bloqueio de conta após tentativas de login falhas, verificação de e-mail, reset de senha com token de expiração curta
+- Mitigação de user enumeration no login (tempo de resposta parecido exista ou não o e-mail)
+- CORS por allow-list, HSTS, handler de exceção genérico em produção (não vaza stack trace)
+- `X-Forwarded-For` processado corretamente atrás de proxy (Fly.io) — sem isso, rate limiting e o IP registrado no refresh token ficam errados
 
 ## Rodando localmente
 
-Pré-requisitos: .NET 10 SDK, um Postgres (local via Docker ou uma instância gratuita no Neon).
+Pré-requisitos: .NET 10 SDK, um Postgres (local via Docker ou uma instância gratuita no [Neon](https://neon.tech)).
 
 ```bash
 cd TripFlow.Api
-dotnet user-secrets set "ConnectionStrings:Default" "Host=localhost;Database=tripflow;Username=postgres;Password=..."
-dotnet user-secrets set "Jwt:PrivateKey" "..."
+dotnet user-secrets set "ConnectionStrings:Default" "Host=localhost;Port=5432;Database=tripflow;Username=postgres;Password=..."
+```
+
+O JWT usa um par de chaves RSA (não commitadas). Gerar um par novo:
+
+```bash
+openssl genrsa -out private.pem 2048
+openssl rsa -in private.pem -pubout -out public.pem
+
+cd TripFlow.Api
+dotnet user-secrets set "Jwt:PrivateKeyPem" "$(cat ../private.pem)"
+dotnet user-secrets set "Jwt:PublicKeyPem" "$(cat ../public.pem)"
+rm ../private.pem ../public.pem
+```
+
+Sem SMTP configurado, e-mails (confirmação, convite, reset de senha) só são logados em vez de enviados — dá pra rodar e testar o fluxo sem precisar de credencial de e-mail:
+
+```bash
+dotnet user-secrets set "Smtp:Host" "smtp.exemplo.com"
+dotnet user-secrets set "Smtp:User" "..."
+dotnet user-secrets set "Smtp:Password" "..."
+```
+
+Login com Google (opcional):
+
+```bash
+dotnet user-secrets set "GoogleAuth:ClientId" "seu-client-id.apps.googleusercontent.com"
+```
+
+```bash
 dotnet run
 ```
 
-Detalhes de configuração (chaves esperadas, como gerar o par RSA do JWT, credenciais do Google) ficam documentados aqui conforme cada peça for implementada.
+A API sobe com Swagger em `/swagger` (ambiente Development) e aplica as migrations pendentes automaticamente no startup.
+
+### Testes
+
+```bash
+dotnet test
+```
+
+Os testes de integração usam SQLite em memória (não precisam do Postgres rodando).
 
 ## Roadmap
 
-- [ ] **Fase 1** — autenticação completa, Viagem, Participantes, Gastos + Orçamento, Checklist
-- [ ] **Fase 2** — Roteiro, Mapa (geocoding), Documentos (upload), Reservas
+- [x] **Fase 1** — autenticação completa (JWT + refresh + Google), Viagem, Participantes, Gastos + Orçamento, Checklist
+- [ ] **Fase 2** — Roteiro, Mapa (geocoding), Documentos (upload em storage externo), Reservas
 - [ ] **Fase 3** — tempo real (SignalR), 2FA, notificações, frontend
 
 ## Deploy
 
-Pensado para hospedagem gratuita: Postgres no Neon, storage de arquivo no Cloudflare R2, API no Fly.io.
+Pensado para hospedagem gratuita:
+
+- **Banco**: Postgres no [Neon](https://neon.tech)
+- **API**: [Fly.io](https://fly.io) (`Dockerfile` + `fly.toml` já prontos)
+- **Storage de arquivo** (fase 2, documentos): Cloudflare R2
+
+```bash
+fly launch --no-deploy   # usa o fly.toml existente, não sobrescreve
+fly secrets set ConnectionStrings__Default="Host=...;Database=...;Username=...;Password=..."
+fly secrets set Jwt__PrivateKeyPem="$(cat private.pem)"
+fly secrets set Jwt__PublicKeyPem="$(cat public.pem)"
+fly secrets set GoogleAuth__ClientId="..."
+fly secrets set Smtp__Host="..." Smtp__User="..." Smtp__Password="..."
+fly deploy
+```
+
+CORS: configurar `Cors__AllowedOrigins__0`, `__1`, etc. via secret com a URL do frontend quando ele existir.
