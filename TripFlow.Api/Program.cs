@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.HttpOverrides;
 using Serilog;
 using Serilog.Formatting.Compact;
 using TripFlow.Api.Authentication;
@@ -38,6 +39,16 @@ builder.Services.AddCors(options =>
 
 builder.Services.AddHealthChecks();
 
+// O IP do cliente (usado pelo rate limiter e pelo CreatedByIp do refresh token) so vem
+// certo se a gente confiar no X-Forwarded-For do proxy na frente (Fly.io, etc.) - sem
+// isso, toda requisicao chega com o IP interno do proxy e cai no mesmo balde de limite.
+builder.Services.Configure<ForwardedHeadersOptions>(options =>
+{
+    options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
+    options.KnownIPNetworks.Clear();
+    options.KnownProxies.Clear();
+});
+
 var app = builder.Build();
 
 if (app.Environment.IsDevelopment())
@@ -56,6 +67,8 @@ else
     }));
     app.UseHsts();
 }
+
+app.UseForwardedHeaders();
 
 app.UseSerilogRequestLogging();
 

@@ -11,12 +11,25 @@ public static class RateLimitingExtensions
         {
             options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
 
-            // Login, registro, refresh, etc: bem apertado, e o alvo natural de brute force.
-            options.AddPolicy("auth", context => RateLimitPartition.GetSlidingWindowLimiter(
+            // Login e refresh: o alvo natural de brute force / credential stuffing, fica
+            // no limite mais apertado. Registro/confirmacao/reset ficam num limite proprio,
+            // mais folgado - senao um fluxo legitimo (registrar -> confirmar -> logar) ja
+            // esbarra no limite sozinho.
+            options.AddPolicy("auth-login", context => RateLimitPartition.GetSlidingWindowLimiter(
                 partitionKey: GetPartitionKey(context),
                 factory: _ => new SlidingWindowRateLimiterOptions
                 {
                     PermitLimit = 5,
+                    Window = TimeSpan.FromMinutes(1),
+                    SegmentsPerWindow = 4,
+                    QueueLimit = 0
+                }));
+
+            options.AddPolicy("auth", context => RateLimitPartition.GetSlidingWindowLimiter(
+                partitionKey: GetPartitionKey(context),
+                factory: _ => new SlidingWindowRateLimiterOptions
+                {
+                    PermitLimit = 15,
                     Window = TimeSpan.FromMinutes(1),
                     SegmentsPerWindow = 4,
                     QueueLimit = 0

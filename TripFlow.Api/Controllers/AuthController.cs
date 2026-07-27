@@ -37,6 +37,7 @@ public class AuthController : ApiControllerBase
     }
 
     [HttpPost("login")]
+    [EnableRateLimiting("auth-login")]
     public async Task<ActionResult<AccessTokenResponse>> Login([FromBody] LoginRequest request, CancellationToken ct)
     {
         var result = await _authService.LoginAsync(request, GetClientIp(), ct);
@@ -59,6 +60,7 @@ public class AuthController : ApiControllerBase
     }
 
     [HttpPost("refresh")]
+    [EnableRateLimiting("auth-login")]
     public async Task<ActionResult<AccessTokenResponse>> Refresh(CancellationToken ct)
     {
         var rawToken = Request.Cookies[RefreshCookieName];
