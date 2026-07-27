@@ -17,6 +17,7 @@ public class BudgetsController : ApiControllerBase
         _budgetService = budgetService;
     }
 
+    /// <summary>Lista o orcamento por categoria: valor planejado (o que foi cadastrado aqui) vs. valor real (soma dos gastos daquela categoria). Requer ser participante da viagem.</summary>
     [HttpGet]
     [Authorize(Policy = AuthorizationExtensions.TripViewerPolicy)]
     public async Task<ActionResult<IReadOnlyList<BudgetDto>>> List(Guid tripId, CancellationToken ct)
@@ -24,6 +25,7 @@ public class BudgetsController : ApiControllerBase
         return Ok(await _budgetService.ListAsync(tripId, ct));
     }
 
+    /// <summary>Cria ou atualiza o valor planejado de uma categoria de orcamento. Requer papel Editor ou Owner.</summary>
     [HttpPut]
     [Authorize(Policy = AuthorizationExtensions.TripEditorPolicy)]
     public async Task<ActionResult<BudgetDto>> Upsert(Guid tripId, [FromBody] UpsertBudgetRequest request, CancellationToken ct)
@@ -31,6 +33,7 @@ public class BudgetsController : ApiControllerBase
         return Ok(await _budgetService.UpsertAsync(tripId, request, ct));
     }
 
+    /// <summary>Remove o valor planejado de uma categoria (os gastos ja lancados nao sao apagados). Requer papel Editor ou Owner.</summary>
     [HttpDelete("{budgetId:guid}")]
     [Authorize(Policy = AuthorizationExtensions.TripEditorPolicy)]
     public async Task<IActionResult> Delete(Guid tripId, Guid budgetId, CancellationToken ct)

@@ -22,6 +22,7 @@ public class AuthController : ApiControllerBase
         _authService = authService;
     }
 
+    /// <summary>Cria uma conta nova. A senha precisa ter maiuscula, minuscula, numero e caractere especial. O e-mail comeca nao confirmado - um codigo de 6 digitos e enviado (ou logado, se o SMTP nao estiver configurado).</summary>
     [HttpPost("register")]
     public async Task<ActionResult<UserDto>> Register([FromBody] RegisterRequest request, CancellationToken ct)
     {
@@ -29,6 +30,7 @@ public class AuthController : ApiControllerBase
         return FromResult(result);
     }
 
+    /// <summary>Confirma o e-mail com o codigo de 6 digitos recebido no registro. O codigo expira em 15 minutos.</summary>
     [HttpPost("confirm-email")]
     public async Task<IActionResult> ConfirmEmail([FromBody] ConfirmEmailRequest request, CancellationToken ct)
     {
@@ -36,6 +38,7 @@ public class AuthController : ApiControllerBase
         return FromResult(result).Result ?? Ok();
     }
 
+    /// <summary>Login com e-mail e senha. Devolve o access token no corpo e o refresh token num cookie HttpOnly. Bloqueia a conta por um tempo apos varias tentativas erradas.</summary>
     [HttpPost("login")]
     [EnableRateLimiting("auth-login")]
     public async Task<ActionResult<AccessTokenResponse>> Login([FromBody] LoginRequest request, CancellationToken ct)
@@ -48,6 +51,7 @@ public class AuthController : ApiControllerBase
         return Ok(ToAccessTokenResponse(result.Value));
     }
 
+    /// <summary>Login (ou cadastro automatico) usando o id_token do Google Sign-In. Cria a conta na primeira vez e ja marca o e-mail como confirmado.</summary>
     [HttpPost("google")]
     public async Task<ActionResult<AccessTokenResponse>> GoogleLogin([FromBody] GoogleLoginRequest request, CancellationToken ct)
     {
@@ -59,6 +63,7 @@ public class AuthController : ApiControllerBase
         return Ok(ToAccessTokenResponse(result.Value));
     }
 
+    /// <summary>Troca o refresh token (cookie) por um par novo de access+refresh token. O token antigo e invalidado; se ja tiver sido usado antes, a sessao inteira e revogada (sinal de roubo de token).</summary>
     [HttpPost("refresh")]
     [EnableRateLimiting("auth-login")]
     public async Task<ActionResult<AccessTokenResponse>> Refresh(CancellationToken ct)
@@ -78,6 +83,7 @@ public class AuthController : ApiControllerBase
         return Ok(ToAccessTokenResponse(result.Value));
     }
 
+    /// <summary>Encerra a sessao atual: revoga o refresh token e coloca o access token atual numa denylist (por jti), impedindo seu uso antes do vencimento natural.</summary>
     [HttpPost("logout")]
     [Authorize]
     public async Task<IActionResult> Logout(CancellationToken ct)
@@ -94,6 +100,7 @@ public class AuthController : ApiControllerBase
         return NoContent();
     }
 
+    /// <summary>Inicia a redefinicao de senha. A resposta e sempre a mesma exista ou nao o e-mail cadastrado, pra nao vazar quais contas existem. Se existir, um token de reset e enviado (ou logado).</summary>
     [HttpPost("forgot-password")]
     public async Task<IActionResult> ForgotPassword([FromBody] ForgotPasswordRequest request, CancellationToken ct)
     {
@@ -101,6 +108,7 @@ public class AuthController : ApiControllerBase
         return Ok(new { message = "Se esse e-mail estiver cadastrado, voce vai receber instrucoes de redefinicao." });
     }
 
+    /// <summary>Define uma senha nova usando o token recebido no forgot-password. Derruba todas as sessoes ativas do usuario (refresh tokens de todas as familias sao revogados).</summary>
     [HttpPost("reset-password")]
     public async Task<IActionResult> ResetPassword([FromBody] ResetPasswordRequest request, CancellationToken ct)
     {

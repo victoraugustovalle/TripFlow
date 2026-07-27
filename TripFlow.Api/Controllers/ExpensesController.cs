@@ -17,6 +17,7 @@ public class ExpensesController : ApiControllerBase
         _expenseService = expenseService;
     }
 
+    /// <summary>Lanca um gasto na viagem. Sem informar a divisao, divide igualmente entre todos os participantes aceitos (o resto de centavos por arredondamento vai pros primeiros da lista). Requer papel Editor ou Owner.</summary>
     [HttpPost]
     [Authorize(Policy = AuthorizationExtensions.TripEditorPolicy)]
     public async Task<ActionResult<ExpenseDto>> Create(Guid tripId, [FromBody] CreateExpenseRequest request, CancellationToken ct)
@@ -24,6 +25,7 @@ public class ExpensesController : ApiControllerBase
         return FromResult(await _expenseService.CreateAsync(tripId, request, ct));
     }
 
+    /// <summary>Lista os gastos da viagem, do mais recente pro mais antigo. Requer ser participante da viagem.</summary>
     [HttpGet]
     [Authorize(Policy = AuthorizationExtensions.TripViewerPolicy)]
     public async Task<ActionResult<IReadOnlyList<ExpenseDto>>> List(Guid tripId, CancellationToken ct)
@@ -31,6 +33,7 @@ public class ExpensesController : ApiControllerBase
         return Ok(await _expenseService.ListAsync(tripId, ct));
     }
 
+    /// <summary>Calcula quem deve quanto pra quem, ja simplificado no menor numero de transferencias possivel. Requer ser participante da viagem.</summary>
     [HttpGet("settlement")]
     [Authorize(Policy = AuthorizationExtensions.TripViewerPolicy)]
     public async Task<ActionResult<SettlementDto>> GetSettlement(Guid tripId, CancellationToken ct)
@@ -38,6 +41,7 @@ public class ExpensesController : ApiControllerBase
         return Ok(await _expenseService.GetSettlementAsync(tripId, ct));
     }
 
+    /// <summary>Apaga um gasto (e a divisao associada a ele). Requer papel Editor ou Owner.</summary>
     [HttpDelete("{expenseId:guid}")]
     [Authorize(Policy = AuthorizationExtensions.TripEditorPolicy)]
     public async Task<IActionResult> Delete(Guid tripId, Guid expenseId, CancellationToken ct)
