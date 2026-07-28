@@ -7,6 +7,7 @@ using TripFlow.Api.Authorization;
 using TripFlow.Api.RateLimiting;
 using TripFlow.Api.RealTime;
 using TripFlow.Api.Swagger;
+using TripFlow.Api.Validation;
 using TripFlow.Application;
 using TripFlow.Infrastructure;
 using TripFlow.Infrastructure.Data;
@@ -18,7 +19,7 @@ builder.Host.UseSerilog((context, loggerConfig) => loggerConfig
     .Enrich.FromLogContext()
     .WriteTo.Console(new CompactJsonFormatter()));
 
-builder.Services.AddControllers();
+builder.Services.AddControllers(options => options.Filters.Add<ValidationFilter>());
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddTripFlowSwagger();
 builder.Services.AddProblemDetails();
