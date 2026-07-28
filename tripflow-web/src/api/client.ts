@@ -27,11 +27,12 @@ let refreshInFlight: Promise<boolean> | null = null;
 
 /**
  * So um refresh por vez mesmo se varias chamadas tomarem 401 ao mesmo tempo (ex: a tela
- * carrega viagem + participantes + gastos juntos e o token expirou entre uma e outra) -
- * sem isso, cada uma dispararia seu proprio /refresh e a rotacao de refresh token
- * invalidaria as outras por reuso.
+ * carrega viagem + participantes + gastos juntos e o token expirou entre uma e outra, ou o
+ * StrictMode do React monta o AuthBootstrap duas vezes em dev) - sem isso, cada uma
+ * dispararia seu proprio /refresh e a rotacao de refresh token invalidaria as outras por
+ * reuso (o backend derruba a sessao inteira quando ve um refresh token repetido).
  */
-function refreshAccessToken(): Promise<boolean> {
+export function refreshAccessToken(): Promise<boolean> {
   if (!refreshInFlight) {
     refreshInFlight = doRefresh().finally(() => {
       refreshInFlight = null;
@@ -104,4 +105,3 @@ export async function apiFetch<T>(path: string, options: RequestOptions = {}): P
   return (await response.json()) as T;
 }
 
-export { doRefresh };

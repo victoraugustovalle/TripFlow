@@ -21,7 +21,7 @@ public class TripsController : ApiControllerBase
     [HttpPost]
     public async Task<ActionResult<TripDto>> Create([FromBody] CreateTripRequest request, CancellationToken ct)
     {
-        var trip = await _tripService.CreateAsync(User.GetUserId(), User.GetEmail(), request, ct);
+        var trip = await _tripService.CreateAsync(User.GetUserId(), User.GetEmail(), User.GetName(), request, ct);
         return CreatedAtAction(nameof(GetById), new { tripId = trip.Id }, trip);
     }
 

@@ -16,4 +16,10 @@ public static class ClaimsPrincipalExtensions
         return user.FindFirst(ClaimTypes.Email)?.Value
             ?? throw new InvalidOperationException("Token sem claim de e-mail.");
     }
+
+    public static string GetName(this ClaimsPrincipal user)
+    {
+        return user.FindFirst(ClaimTypes.Name)?.Value
+            ?? throw new InvalidOperationException("Token sem claim de nome.");
+    }
 }

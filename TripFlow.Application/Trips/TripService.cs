@@ -16,7 +16,7 @@ public class TripService
         _db = db;
     }
 
-    public async Task<TripDto> CreateAsync(Guid currentUserId, string currentUserEmail, CreateTripRequest request, CancellationToken ct = default)
+    public async Task<TripDto> CreateAsync(Guid currentUserId, string currentUserEmail, string currentUserName, CreateTripRequest request, CancellationToken ct = default)
     {
         var trip = new Trip
         {
@@ -34,6 +34,7 @@ public class TripService
             TripId = trip.Id,
             UserId = currentUserId,
             InvitedEmail = currentUserEmail.Trim().ToLowerInvariant(),
+            DisplayName = currentUserName.Trim(),
             Role = TripRole.Owner,
             Status = ParticipantStatus.Accepted,
             RespondedAt = DateTime.UtcNow

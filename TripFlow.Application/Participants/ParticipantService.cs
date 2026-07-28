@@ -63,7 +63,7 @@ public class ParticipantService
         return ServiceResult<ParticipantDto>.Success(ToDto(participant));
     }
 
-    public async Task<ServiceResult<ParticipantDto>> AcceptInviteAsync(Guid tripId, Guid currentUserId, string currentUserEmail, AcceptInviteRequest request, CancellationToken ct = default)
+    public async Task<ServiceResult<ParticipantDto>> AcceptInviteAsync(Guid tripId, Guid currentUserId, string currentUserEmail, string currentUserName, AcceptInviteRequest request, CancellationToken ct = default)
     {
         var normalizedEmail = currentUserEmail.Trim().ToLowerInvariant();
         var participant = await _db.TripParticipants.FirstOrDefaultAsync(p => p.TripId == tripId && p.InvitedEmail == normalizedEmail, ct);
@@ -75,6 +75,7 @@ public class ParticipantService
             return ServiceResult<ParticipantDto>.Failure(ServiceErrorType.Validation, "Convite invalido ou expirado.");
 
         participant.UserId = currentUserId;
+        participant.DisplayName = currentUserName.Trim();
         participant.Status = ParticipantStatus.Accepted;
         participant.RespondedAt = DateTime.UtcNow;
         participant.InviteTokenHash = null;

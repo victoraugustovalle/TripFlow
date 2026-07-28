@@ -29,7 +29,7 @@ public class ParticipantsController : ApiControllerBase
     [HttpPost("accept")]
     public async Task<ActionResult<ParticipantDto>> Accept(Guid tripId, [FromBody] AcceptInviteRequest request, CancellationToken ct)
     {
-        return FromResult(await _participantService.AcceptInviteAsync(tripId, User.GetUserId(), User.GetEmail(), request, ct));
+        return FromResult(await _participantService.AcceptInviteAsync(tripId, User.GetUserId(), User.GetEmail(), User.GetName(), request, ct));
     }
 
     /// <summary>Recusa o convite pendente do usuario autenticado pra essa viagem.</summary>

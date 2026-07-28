@@ -62,7 +62,7 @@ public class AuthController : ApiControllerBase
 
     /// <summary>Troca o refresh token (cookie) por um par novo de access+refresh token. O token antigo e invalidado; se ja tiver sido usado antes, a sessao inteira e revogada (sinal de roubo de token).</summary>
     [HttpPost("refresh")]
-    [EnableRateLimiting("auth-login")]
+    [EnableRateLimiting("auth-refresh")]
     public async Task<ActionResult<AccessTokenResponse>> Refresh(CancellationToken ct)
     {
         var rawToken = Request.Cookies[RefreshTokenCookie.Name];
