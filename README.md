@@ -148,11 +148,15 @@ dotnet test
 
 Os testes de integração usam SQLite em memória (não precisam do Postgres rodando).
 
+## Frontend
+
+[`tripflow-web/`](tripflow-web/) — React + TypeScript + Vite + Tailwind consumindo essa API. Cobre login/registro/2FA, viagens, participantes, gastos com settlement e checklist com atualização em tempo real. Detalhes de como rodar em [tripflow-web/README.md](tripflow-web/README.md).
+
 ## Roadmap
 
 - [x] **Fase 1** — autenticação completa (JWT + refresh + Google), Viagem, Participantes, Gastos + Orçamento, Checklist
 - [x] **Fase 2** — Roteiro, Mapa (geocoding via Nominatim), Documentos (upload validado + storage externo), Reservas vinculadas ao roteiro
-- [ ] **Fase 3** — [x] tempo real (SignalR — gastos e checklist), [x] 2FA (TOTP), notificações, frontend
+- [ ] **Fase 3** — [x] tempo real (SignalR — gastos e checklist), [x] 2FA (TOTP), [x] frontend (MVP), notificações, resto das telas (roteiro/mapa/documentos/reservas)
 
 ## Deploy
 
