@@ -41,6 +41,25 @@ TripFlow.Tests/           testes de unidade e integração
 - Download de documento sempre passa pela API (nunca expõe URL direta do bucket), então a autorização por papel na viagem é checada antes de qualquer byte sair
 - Rate limit próprio pro geocoding, com chave **global** (não por usuário) — respeita o limite de uso do Nominatim (1 req/s pro serviço inteiro)
 - Hub do SignalR exige o mesmo JWT dos endpoints REST; entrar no grupo de uma viagem checa participação aceita (não dá pra escutar atualização de viagem que você não faz parte)
+- **2FA (TOTP)**: segredo criptografado em repouso com AES-256-GCM (não hash — precisa voltar em claro pra calcular o código), login com Google também respeita o 2FA (não é um jeito de pular o segundo fator), desligar exige senha + código, códigos de recuperação de uso único pra quem perde o celular
+
+## 2FA (TOTP)
+
+Segunda camada de login via app autenticador (Google Authenticator, Authy, 1Password, etc).
+
+```
+POST /api/auth/2fa/setup            [autenticado] gera o segredo (2FA ainda desligado) + QR code (PNG base64) + otpauth:// URI
+POST /api/auth/2fa/enable           [autenticado] { code } - confirma com um código do app e liga o 2FA; devolve 8 códigos de recuperação (só aparecem essa vez)
+POST /api/auth/2fa/disable          [autenticado] { password, code } - desliga
+POST /api/auth/2fa/verify           [público, rate limit apertado] { email, challengeToken, code | recoveryCode } - segundo passo do login
+```
+
+Fluxo de login com 2FA ligado:
+
+1. `POST /api/auth/login` com e-mail+senha → em vez do access token, devolve `{ requiresTwoFactor: true, twoFactorChallengeToken: "..." }`
+2. `POST /api/auth/2fa/verify` com esse token + o código de 6 dígitos do app (ou um código de recuperação) → devolve o access token normalmente
+
+O mesmo desafio vale pro login com Google (`/api/auth/google`) — se a conta tem 2FA, entrar pelo Google também para no passo 2, não é uma forma de contornar.
 
 ## Tempo real (SignalR)
 
@@ -100,6 +119,12 @@ Login com Google (opcional):
 dotnet user-secrets set "GoogleAuth:ClientId" "seu-client-id.apps.googleusercontent.com"
 ```
 
+2FA: precisa de uma chave AES-256 (32 bytes) pra criptografar o segredo TOTP em repouso:
+
+```bash
+dotnet user-secrets set "TwoFactor:EncryptionKeyBase64" "$(openssl rand -base64 32)"
+```
+
 Storage de documentos (opcional): sem credencial de R2 configurada, os arquivos vão pra `TripFlow.Api/App_Data/uploads` (disco local, só pra dev — nunca use isso em produção, o volume some se o container for recriado):
 
 ```bash
@@ -127,7 +152,7 @@ Os testes de integração usam SQLite em memória (não precisam do Postgres rod
 
 - [x] **Fase 1** — autenticação completa (JWT + refresh + Google), Viagem, Participantes, Gastos + Orçamento, Checklist
 - [x] **Fase 2** — Roteiro, Mapa (geocoding via Nominatim), Documentos (upload validado + storage externo), Reservas vinculadas ao roteiro
-- [ ] **Fase 3** — tempo real ([x] SignalR — gastos e checklist), 2FA, notificações, frontend
+- [ ] **Fase 3** — [x] tempo real (SignalR — gastos e checklist), [x] 2FA (TOTP), notificações, frontend
 
 ## Deploy
 
@@ -145,6 +170,7 @@ fly secrets set Jwt__PublicKeyPem="$(cat public.pem)"
 fly secrets set GoogleAuth__ClientId="..."
 fly secrets set Smtp__Host="..." Smtp__User="..." Smtp__Password="..."
 fly secrets set FileStorage__R2AccountId="..." FileStorage__R2AccessKeyId="..." FileStorage__R2SecretAccessKey="..." FileStorage__R2BucketName="tripflow-documents"
+fly secrets set TwoFactor__EncryptionKeyBase64="$(openssl rand -base64 32)"
 fly deploy
 ```
 
