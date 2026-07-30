@@ -2,6 +2,7 @@ import { Link, Outlet, useNavigate } from "react-router-dom";
 import * as authApi from "../api/auth";
 import { useAuthStore } from "../auth/authStore";
 import { Button } from "../components/Button";
+import { FlightTrail } from "../components/FlightTrail";
 
 export function AppLayout() {
   const navigate = useNavigate();
@@ -18,14 +19,15 @@ export function AppLayout() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50">
-      <header className="border-b border-slate-200 bg-white">
-        <div className="mx-auto flex max-w-5xl items-center justify-between px-4 py-3">
-          <Link to="/" className="text-lg font-semibold text-brand-700">
+    <div className="min-h-screen bg-cream-200">
+      <header className="relative overflow-hidden border-b border-cream-300 bg-white">
+        <FlightTrail className="pointer-events-none absolute -right-4 -top-6 h-16 w-40 text-brand-600/10" />
+        <div className="relative mx-auto flex max-w-5xl items-center justify-between px-4 py-3">
+          <Link to="/" className="font-display text-xl font-extrabold text-brand-700">
             TripFlow
           </Link>
           <div className="flex items-center gap-4">
-            <span className="text-sm text-slate-600">{user?.name}</span>
+            <span className="text-sm text-navy-700">{user?.name}</span>
             <Button variant="ghost" onClick={handleLogout}>
               Sair
             </Button>

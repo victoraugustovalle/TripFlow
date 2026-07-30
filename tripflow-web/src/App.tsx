@@ -4,6 +4,7 @@ import { ConfirmEmailPage } from "./auth/ConfirmEmailPage";
 import { LoginPage } from "./auth/LoginPage";
 import { RegisterPage } from "./auth/RegisterPage";
 import { TwoFactorVerifyPage } from "./auth/TwoFactorVerifyPage";
+import { Toaster } from "./components/Toaster";
 import { AppLayout } from "./layouts/AppLayout";
 import { ProtectedRoute } from "./layouts/ProtectedRoute";
 import { NewTripPage } from "./trips/NewTripPage";
@@ -13,6 +14,7 @@ import { TripsListPage } from "./trips/TripsListPage";
 export function App() {
   return (
     <BrowserRouter>
+      <Toaster />
       <AuthBootstrap>
         <Routes>
           <Route path="/login" element={<LoginPage />} />

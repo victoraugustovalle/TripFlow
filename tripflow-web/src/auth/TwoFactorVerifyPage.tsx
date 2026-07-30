@@ -6,9 +6,11 @@ import { z } from "zod";
 import * as authApi from "../api/auth";
 import { getErrorMessage } from "../api/errors";
 import { Alert } from "../components/Alert";
+import { BackLink } from "../components/BackLink";
 import { Button } from "../components/Button";
 import { Card } from "../components/Card";
 import { Input } from "../components/Input";
+import { AuthLayout } from "./AuthLayout";
 import { useAuthStore } from "./authStore";
 
 const schema = z.object({
@@ -34,9 +36,9 @@ export function TwoFactorVerifyPage() {
 
   if (!state?.email || !state?.challengeToken) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-slate-50 px-4">
+      <div className="flex min-h-screen items-center justify-center bg-cream-200 px-4">
         <Card className="w-full max-w-sm text-center">
-          <p className="text-sm text-slate-600">Sessao de login expirada.</p>
+          <p className="text-sm text-navy-700/70">Sessao de login expirada.</p>
           <Button onClick={() => navigate("/login")} className="mt-4">
             Voltar pro login
           </Button>
@@ -62,10 +64,11 @@ export function TwoFactorVerifyPage() {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-slate-50 px-4">
+    <AuthLayout pose="checklist">
       <Card className="w-full max-w-sm">
-        <h1 className="mb-1 text-xl font-semibold text-slate-900">Verificacao em duas etapas</h1>
-        <p className="mb-6 text-sm text-slate-500">
+        <BackLink to="/login" label="Voltar pro login" />
+        <h1 className="font-display mb-1 mt-3 text-xl font-semibold text-navy-900">Verificacao em duas etapas</h1>
+        <p className="mb-6 text-sm text-navy-700/70">
           {useRecoveryCode ? "Digite um dos seus codigos de recuperacao." : "Digite o codigo do seu app autenticador."}
         </p>
 
@@ -93,6 +96,6 @@ export function TwoFactorVerifyPage() {
           </button>
         </form>
       </Card>
-    </div>
+    </AuthLayout>
   );
 }

@@ -84,6 +84,12 @@ await connection.start();
 await connection.invoke("JoinTrip", tripId);
 ```
 
+## Swagger
+
+Com a API rodando em ambiente `Development`, o Swagger UI fica em `/swagger` — é o jeito mais rápido de explorar e testar os endpoints sem precisar montar um Postman do zero. A documentação vem dos comentários `///` nos controllers (dá pra ver isso nos exemplos de 2FA e SignalR mais abaixo), então o Swagger tende a ficar atualizado junto do código em vez de ser uma coisa separada que alguém esquece de manter.
+
+Os endpoints que exigem token (a maioria) pedem o header `Authorization: Bearer <token>` — pega o `accessToken` da resposta de `POST /api/auth/login` e usa o botão "Authorize" no topo da página do Swagger.
+
 ## Rodando localmente
 
 Pré-requisitos: .NET 10 SDK, um Postgres (local via Docker ou uma instância gratuita no [Neon](https://neon.tech)).
@@ -135,10 +141,10 @@ dotnet user-secrets set "FileStorage:R2BucketName" "tripflow-documents"
 ```
 
 ```bash
-dotnet run
+dotnet run --launch-profile https
 ```
 
-A API sobe com Swagger em `/swagger` (ambiente Development) e aplica as migrations pendentes automaticamente no startup.
+Sobe em `https://localhost:7194` (e também `http://localhost:5299`) — é o perfil que o frontend espera por padrão (confira `VITE_API_BASE_URL` em `tripflow-web/.env.development`). Se preferir só HTTP, `dotnet run --launch-profile http` sobe só na porta 5299. As migrations pendentes são aplicadas automaticamente no startup, não precisa rodar `dotnet ef database update` à parte.
 
 ### Testes
 
@@ -150,13 +156,14 @@ Os testes de integração usam SQLite em memória (não precisam do Postgres rod
 
 ## Frontend
 
-[`tripflow-web/`](tripflow-web/) — React + TypeScript + Vite + Tailwind consumindo essa API. Cobre login/registro/2FA, viagens, participantes, gastos com settlement e checklist com atualização em tempo real. Detalhes de como rodar em [tripflow-web/README.md](tripflow-web/README.md).
+[`tripflow-web/`](tripflow-web/) — React + TypeScript + Vite + Tailwind consumindo essa API. Cobre login/registro/confirmação de e-mail/2FA, viagens (com capa — upload do dispositivo ou busca de foto na web), participantes, gastos com settlement, checklist e roteiro com geocoding e mapas, boa parte com atualização em tempo real via SignalR. Tem identidade visual e sistema de design próprios (não é um template genérico de admin). Detalhes de como rodar, decisões de UI e o que ainda falta em [tripflow-web/README.md](tripflow-web/README.md).
 
 ## Roadmap
 
 - [x] **Fase 1** — autenticação completa (JWT + refresh + Google), Viagem, Participantes, Gastos + Orçamento, Checklist
 - [x] **Fase 2** — Roteiro, Mapa (geocoding via Nominatim), Documentos (upload validado + storage externo), Reservas vinculadas ao roteiro
-- [ ] **Fase 3** — [x] tempo real (SignalR — gastos e checklist), [x] 2FA (TOTP), [x] frontend (MVP), notificações, resto das telas (roteiro/mapa/documentos/reservas)
+- [x] **Fase 3** — tempo real (SignalR — gastos e checklist), 2FA (TOTP), capa de viagem (upload ou busca de foto), frontend cobrindo auth/viagens/participantes/gastos/checklist/roteiro+mapa
+- [ ] **Fase 4** — telas de Documentos, Reservas e Orçamento no frontend (a API já suporta tudo isso), login com Google e 2FA configuráveis pela interface, notificações
 
 ## Deploy
 
@@ -178,4 +185,4 @@ fly secrets set TwoFactor__EncryptionKeyBase64="$(openssl rand -base64 32)"
 fly deploy
 ```
 
-CORS: configurar `Cors__AllowedOrigins__0`, `__1`, etc. via secret com a URL do frontend quando ele existir.
+CORS: configurar `Cors__AllowedOrigins__0`, `__1`, etc. via secret com a URL de onde o frontend estiver hospedado (ex: a URL do Vercel/Netlify do `tripflow-web`).

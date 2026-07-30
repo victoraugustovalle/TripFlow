@@ -6,9 +6,11 @@ import { z } from "zod";
 import * as authApi from "../api/auth";
 import { getErrorMessage } from "../api/errors";
 import { Alert } from "../components/Alert";
+import { BackLink } from "../components/BackLink";
 import { Button } from "../components/Button";
 import { Card } from "../components/Card";
 import { Input } from "../components/Input";
+import { AuthLayout } from "./AuthLayout";
 
 const schema = z.object({
   code: z.string().length(6, "O codigo tem 6 digitos."),
@@ -40,10 +42,11 @@ export function ConfirmEmailPage() {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-slate-50 px-4">
+    <AuthLayout pose="checklist">
       <Card className="w-full max-w-sm">
-        <h1 className="mb-1 text-xl font-semibold text-slate-900">Confirme seu e-mail</h1>
-        <p className="mb-6 text-sm text-slate-500">
+        <BackLink to="/login" label="Voltar pro login" />
+        <h1 className="font-display mb-1 mt-3 text-xl font-semibold text-navy-900">Confirme seu e-mail</h1>
+        <p className="mb-6 text-sm text-navy-700/70">
           Mandamos um codigo de 6 digitos para <strong>{email || "o seu e-mail"}</strong>. Sem SMTP configurado no
           backend, o codigo aparece no log do servidor em vez de chegar por e-mail de verdade.
         </p>
@@ -67,6 +70,6 @@ export function ConfirmEmailPage() {
           </form>
         )}
       </Card>
-    </div>
+    </AuthLayout>
   );
 }

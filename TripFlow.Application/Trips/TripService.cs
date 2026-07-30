@@ -64,7 +64,7 @@ public class TripService
 
         return participations
             .Where(p => p.Trip is not null)
-            .Select(p => new TripSummaryDto(p.Trip!.Id, p.Trip.Name, p.Trip.Destination, p.Trip.Status, p.Trip.StartDate, p.Trip.EndDate, p.Role))
+            .Select(p => new TripSummaryDto(p.Trip!.Id, p.Trip.Name, p.Trip.Destination, p.Trip.Status, p.Trip.StartDate, p.Trip.EndDate, p.Trip.CoverImageUrl, p.Role))
             .ToList();
     }
 
@@ -80,6 +80,7 @@ public class TripService
         trip.StartDate = request.StartDate;
         trip.EndDate = request.EndDate;
         trip.Status = request.Status;
+        trip.CoverImageUrl = request.CoverImageUrl;
 
         await _db.SaveChangesAsync(ct);
         return ServiceResult<TripDto>.Success(ToDto(trip));
@@ -98,5 +99,5 @@ public class TripService
 
     private static TripDto ToDto(Trip trip) => new(
         trip.Id, trip.Name, trip.Destination, trip.Description, trip.StartDate, trip.EndDate,
-        trip.Currency, trip.Status, trip.CreatedByUserId, trip.CreatedAt);
+        trip.Currency, trip.Status, trip.CoverImageUrl, trip.CreatedByUserId, trip.CreatedAt);
 }

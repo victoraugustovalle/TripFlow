@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import * as expensesApi from "../api/expenses";
 import type { CreateExpenseInput } from "../api/expenses";
+import { pushToast } from "../toast/toastStore";
 
 export function useExpenses(tripId: string) {
   return useQuery({ queryKey: ["expenses", tripId], queryFn: () => expensesApi.listExpenses(tripId) });
@@ -17,6 +18,7 @@ export function useCreateExpense(tripId: string) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["expenses", tripId] });
       queryClient.invalidateQueries({ queryKey: ["settlement", tripId] });
+      pushToast("Gasto adicionado.");
     },
   });
 }
@@ -28,6 +30,7 @@ export function useDeleteExpense(tripId: string) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["expenses", tripId] });
       queryClient.invalidateQueries({ queryKey: ["settlement", tripId] });
+      pushToast("Gasto removido.");
     },
   });
 }

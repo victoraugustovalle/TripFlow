@@ -9,6 +9,7 @@ import { Alert } from "../components/Alert";
 import { Button } from "../components/Button";
 import { Card } from "../components/Card";
 import { Input } from "../components/Input";
+import { AuthLayout } from "./AuthLayout";
 
 const schema = z.object({
   name: z.string().min(1, "Informe seu nome."),
@@ -45,10 +46,10 @@ export function RegisterPage() {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-slate-50 px-4">
+    <AuthLayout pose="wave">
       <Card className="w-full max-w-sm">
-        <h1 className="mb-1 text-xl font-semibold text-slate-900">Criar conta</h1>
-        <p className="mb-6 text-sm text-slate-500">Leva menos de um minuto.</p>
+        <h1 className="font-display mb-1 text-xl font-semibold text-navy-900">Criar conta</h1>
+        <p className="mb-6 text-sm text-navy-700/70">Leva menos de um minuto.</p>
 
         <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4">
           <Input label="Nome" autoComplete="name" error={errors.name?.message} {...register("name")} />
@@ -68,13 +69,13 @@ export function RegisterPage() {
           </Button>
         </form>
 
-        <p className="mt-6 text-center text-sm text-slate-500">
+        <p className="mt-6 text-center text-sm text-navy-700/70">
           Ja tem conta?{" "}
           <Link to="/login" className="font-medium text-brand-600 hover:text-brand-700">
             Entrar
           </Link>
         </p>
       </Card>
-    </div>
+    </AuthLayout>
   );
 }

@@ -4,8 +4,9 @@ import { z } from "zod";
 import type { TripRole } from "../api/types";
 import { Button } from "../components/Button";
 import { Card } from "../components/Card";
+import { FlightTrail } from "../components/FlightTrail";
 import { Input } from "../components/Input";
-import { Spinner } from "../components/Spinner";
+import { SkeletonLines } from "../components/Skeleton";
 import { useChecklist, useCreateChecklistItem, useDeleteChecklistItem, useToggleChecklistItem } from "./hooks";
 
 const schema = z.object({ title: z.string().min(1, "Descreva o item.") });
@@ -31,11 +32,18 @@ export function ChecklistPanel({ tripId, myRole }: { tripId: string; myRole: Tri
     reset();
   };
 
-  if (isLoading) return <Spinner />;
+  if (isLoading) {
+    return (
+      <Card>
+        <h2 className="font-display mb-4 text-lg font-medium text-navy-900">Checklist</h2>
+        <SkeletonLines />
+      </Card>
+    );
+  }
 
   return (
     <Card>
-      <h2 className="mb-4 text-lg font-medium text-slate-900">Checklist</h2>
+      <h2 className="font-display mb-4 text-lg font-medium text-navy-900">Checklist</h2>
 
       {canEdit && (
         <form onSubmit={handleSubmit(onSubmit)} className="mb-4 flex items-end gap-3">
@@ -48,9 +56,14 @@ export function ChecklistPanel({ tripId, myRole }: { tripId: string; myRole: Tri
         </form>
       )}
 
-      {items?.length === 0 && <p className="text-sm text-slate-500">Nada na checklist ainda.</p>}
+      {items?.length === 0 && (
+        <p className="flex items-center gap-2 text-sm text-navy-700/70">
+          <FlightTrail className="h-5 w-8 shrink-0 text-brand-600/40" />
+          Nada na checklist ainda.
+        </p>
+      )}
 
-      <ul className="flex flex-col divide-y divide-slate-100">
+      <ul className="flex flex-col divide-y divide-cream-200">
         {items?.map((item) => (
           <li key={item.id} className="flex items-center justify-between py-3">
             <label className="flex items-center gap-3 text-sm">
@@ -59,12 +72,16 @@ export function ChecklistPanel({ tripId, myRole }: { tripId: string; myRole: Tri
                 checked={item.isDone}
                 disabled={!canEdit || toggleItem.isPending}
                 onChange={() => toggleItem.mutate(item)}
-                className="h-4 w-4 rounded border-slate-300 text-brand-600 focus:ring-brand-500"
+                className="h-4 w-4 rounded border-cream-300 text-brand-600 focus:ring-brand-500"
               />
-              <span className={item.isDone ? "text-slate-400 line-through" : "text-slate-800"}>{item.title}</span>
+              <span
+                className={`transition-colors duration-150 ${item.isDone ? "text-navy-700/50 line-through" : "text-navy-900"}`}
+              >
+                {item.title}
+              </span>
             </label>
             {canEdit && (
-              <Button variant="ghost" onClick={() => deleteItem.mutate(item.id)} disabled={deleteItem.isPending}>
+              <Button variant="ghostDanger" onClick={() => deleteItem.mutate(item.id)} disabled={deleteItem.isPending}>
                 Remover
               </Button>
             )}

@@ -12,6 +12,8 @@ public class Trip
     public DateOnly? EndDate { get; set; }
     public string Currency { get; set; } = "BRL";
     public TripStatus Status { get; set; } = TripStatus.Planning;
+    /// <summary>URL externa (resultado de busca na web) ou data URL base64 (upload do dispositivo, ja redimensionado no cliente).</summary>
+    public string? CoverImageUrl { get; set; }
 
     public Guid CreatedByUserId { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;

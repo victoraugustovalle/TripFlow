@@ -1,15 +1,18 @@
 import { type ButtonHTMLAttributes, forwardRef } from "react";
 
 interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
-  variant?: "primary" | "secondary" | "danger" | "ghost";
+  variant?: "primary" | "secondary" | "danger" | "ghost" | "ghostDanger";
   isLoading?: boolean;
 }
 
 const variantClasses: Record<NonNullable<ButtonProps["variant"]>, string> = {
-  primary: "bg-brand-600 text-white hover:bg-brand-700 focus-visible:outline-brand-600",
-  secondary: "bg-white text-slate-700 border border-slate-300 hover:bg-slate-50 focus-visible:outline-slate-400",
-  danger: "bg-red-600 text-white hover:bg-red-700 focus-visible:outline-red-600",
-  ghost: "bg-transparent text-slate-600 hover:bg-slate-100 focus-visible:outline-slate-400",
+  primary: "bg-brand-700 text-white shadow-sm hover:bg-brand-800 focus-visible:outline-brand-600",
+  secondary:
+    "bg-white text-brand-700 border border-cream-300 hover:bg-cream-100 focus-visible:outline-brand-400",
+  danger: "bg-coral-700 text-white shadow-sm hover:bg-coral-800 focus-visible:outline-coral-600",
+  ghost: "bg-transparent text-navy-700 hover:bg-cream-200 focus-visible:outline-brand-400",
+  /** Mesmo peso visual do ghost em repouso, mas avisa a gravidade da acao (remover/excluir) no hover. */
+  ghostDanger: "bg-transparent text-navy-700 hover:bg-coral-50 hover:text-coral-700 focus-visible:outline-coral-400",
 };
 
 export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button(
@@ -20,8 +23,9 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button
     <button
       ref={ref}
       disabled={disabled || isLoading}
-      className={`inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-medium
-        transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2
+      className={`font-display inline-flex min-h-11 items-center justify-center gap-2 rounded-full px-4 py-2 text-sm font-semibold
+        transition-colors motion-safe:active:scale-[0.97]
+        focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2
         disabled:cursor-not-allowed disabled:opacity-60 ${variantClasses[variant]} ${className}`}
       {...props}
     >

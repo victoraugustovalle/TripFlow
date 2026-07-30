@@ -1,8 +1,10 @@
 import { Link } from "react-router-dom";
+import { Badge } from "../components/Badge";
 import { Button } from "../components/Button";
 import { Card } from "../components/Card";
-import { Spinner } from "../components/Spinner";
-import { tripRoleLabels, tripStatusLabels } from "../utils/labels";
+import { FlightTrail } from "../components/FlightTrail";
+import { SkeletonCards } from "../components/Skeleton";
+import { formatDate, tripRoleLabels, tripStatusLabels, tripStatusTone } from "../utils/labels";
 import { useTrips } from "./hooks";
 
 export function TripsListPage() {
@@ -11,38 +13,52 @@ export function TripsListPage() {
   return (
     <div className="flex flex-col gap-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold text-slate-900">Suas viagens</h1>
+        <h1 className="font-display text-2xl font-semibold text-navy-900">Suas viagens</h1>
         <Link to="/trips/new">
           <Button>Nova viagem</Button>
         </Link>
       </div>
 
-      {isLoading && <Spinner />}
-      {isError && <p className="text-sm text-red-600">Nao foi possivel carregar suas viagens.</p>}
+      {isLoading && <SkeletonCards />}
+      {isError && <p className="text-sm text-coral-700">Nao foi possivel carregar suas viagens.</p>}
 
       {trips && trips.length === 0 && (
-        <Card className="text-center text-slate-500">
-          Voce ainda nao tem nenhuma viagem. <Link to="/trips/new" className="text-brand-600">Crie a primeira.</Link>
+        <Card className="relative overflow-hidden text-center text-navy-700/70">
+          <FlightTrail className="pointer-events-none absolute -right-6 -top-6 h-24 w-48 text-brand-600/15" />
+          <p className="relative">
+            Voce ainda nao tem nenhuma viagem. <Link to="/trips/new" className="text-brand-700">Crie a primeira.</Link>
+          </p>
         </Card>
       )}
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        {trips?.map((trip) => (
-          <Link key={trip.id} to={`/trips/${trip.id}`}>
-            <Card className="h-full transition-shadow hover:shadow-md">
-              <div className="mb-2 flex items-start justify-between">
-                <h2 className="text-lg font-medium text-slate-900">{trip.name}</h2>
-                <span className="rounded-full bg-brand-100 px-2 py-0.5 text-xs font-medium text-brand-700">
-                  {tripRoleLabels[trip.myRole]}
-                </span>
+        {trips?.map((trip) => {
+          const dateRange = [formatDate(trip.startDate), formatDate(trip.endDate)].filter(Boolean).join(" – ");
+          return (
+            <Link key={trip.id} to={`/trips/${trip.id}`}>
+              <div className="h-full overflow-hidden rounded-2xl border border-cream-300 bg-white shadow-sm transition-shadow hover:shadow-md motion-safe:transition-transform motion-safe:hover:-translate-y-0.5">
+                <div className="relative h-20 overflow-hidden bg-gradient-to-br from-brand-500 to-brand-700">
+                  {trip.coverImageUrl ? (
+                    <img src={trip.coverImageUrl} alt="" className="absolute inset-0 h-full w-full object-cover" />
+                  ) : (
+                    <FlightTrail className="absolute inset-0 h-full w-full text-cream-100/50" />
+                  )}
+                  <span className="absolute right-3 top-3 rounded-full bg-white/90 px-2 py-0.5 text-xs font-medium text-brand-700 shadow-sm">
+                    {tripRoleLabels[trip.myRole]}
+                  </span>
+                </div>
+                <div className="p-4">
+                  <h2 className="font-display text-lg font-medium text-navy-900">{trip.name}</h2>
+                  {trip.destination && <p className="text-sm text-navy-700/70">{trip.destination}</p>}
+                  <div className="mt-3 flex items-center justify-between">
+                    <Badge tone={tripStatusTone[trip.status]}>{tripStatusLabels[trip.status]}</Badge>
+                    {dateRange && <p className="text-xs text-navy-700/50">{dateRange}</p>}
+                  </div>
+                </div>
               </div>
-              {trip.destination && <p className="text-sm text-slate-500">{trip.destination}</p>}
-              <p className="mt-3 text-xs font-medium uppercase tracking-wide text-slate-400">
-                {tripStatusLabels[trip.status]}
-              </p>
-            </Card>
-          </Link>
-        ))}
+            </Link>
+          );
+        })}
       </div>
     </div>
   );

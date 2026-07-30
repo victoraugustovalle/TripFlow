@@ -36,6 +36,7 @@ export interface TripDto {
   endDate: string | null;
   currency: string;
   status: TripStatus;
+  coverImageUrl: string | null;
   createdByUserId: string;
   createdAt: string;
 }
@@ -47,6 +48,7 @@ export interface TripSummaryDto {
   status: TripStatus;
   startDate: string | null;
   endDate: string | null;
+  coverImageUrl: string | null;
   myRole: TripRole;
 }
 
@@ -102,4 +104,26 @@ export interface ChecklistItemDto {
   assignedToParticipantId: string | null;
   dueDate: string | null;
   createdAt: string;
+}
+
+export type ItineraryItemType = 0 | 1 | 2 | 3 | 4; // Activity | Transport | Lodging | Meal | Other
+
+export interface ItineraryItemDto {
+  id: string;
+  title: string;
+  description: string | null;
+  type: ItineraryItemType;
+  itemDate: string;
+  startTime: string | null;
+  endTime: string | null;
+  location: string | null;
+  latitude: number | null;
+  longitude: number | null;
+  createdAt: string;
+}
+
+export interface GeocodeResultDto {
+  displayName: string;
+  latitude: number;
+  longitude: number;
 }

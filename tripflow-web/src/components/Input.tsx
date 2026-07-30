@@ -13,19 +13,19 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
 
   return (
     <div className="flex flex-col gap-1">
-      <label htmlFor={inputId} className="text-sm font-medium text-slate-700">
+      <label htmlFor={inputId} className="text-sm font-medium text-navy-900">
         {label}
       </label>
       <input
         ref={ref}
         id={inputId}
-        className={`rounded-lg border px-3 py-2 text-sm text-slate-900 shadow-sm outline-none transition-colors
+        className={`rounded-lg border px-3 py-2 text-sm text-navy-900 shadow-sm outline-none transition-colors
           focus:border-brand-500 focus:ring-1 focus:ring-brand-500
-          ${error ? "border-red-400" : "border-slate-300"} ${className}`}
+          ${error ? "border-coral-400" : "border-cream-300"} ${className}`}
         aria-invalid={Boolean(error)}
         {...props}
       />
-      {error && <span className="text-sm text-red-600">{error}</span>}
+      {error && <span className="text-sm text-coral-700">{error}</span>}
     </div>
   );
 });

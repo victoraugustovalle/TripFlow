@@ -25,6 +25,9 @@ public class UpdateTripRequestValidator : AbstractValidator<UpdateTripRequest>
         RuleFor(x => x.Name).NotEmpty().MaximumLength(200);
         RuleFor(x => x.Destination).MaximumLength(200);
         RuleFor(x => x.Description).MaximumLength(2000);
+        // Cobre uma URL de busca na web (curta) ou uma data URL base64 de foto ja redimensionada no cliente
+        // (JPEG ~1200px de largura fica bem abaixo disso) - o limite existe so pra barrar payload abusivo.
+        RuleFor(x => x.CoverImageUrl).MaximumLength(2_000_000);
         RuleFor(x => x.EndDate)
             .GreaterThanOrEqualTo(x => x.StartDate!.Value)
             .When(x => x.StartDate is not null && x.EndDate is not null)

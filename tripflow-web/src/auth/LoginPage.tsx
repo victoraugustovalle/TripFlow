@@ -9,6 +9,7 @@ import { Alert } from "../components/Alert";
 import { Button } from "../components/Button";
 import { Card } from "../components/Card";
 import { Input } from "../components/Input";
+import { AuthLayout } from "./AuthLayout";
 import { useAuthStore } from "./authStore";
 
 const schema = z.object({
@@ -47,10 +48,10 @@ export function LoginPage() {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-slate-50 px-4">
+    <AuthLayout pose="wave">
       <Card className="w-full max-w-sm">
-        <h1 className="mb-1 text-xl font-semibold text-slate-900">Entrar no TripFlow</h1>
-        <p className="mb-6 text-sm text-slate-500">Organize a viagem em grupo sem perder o controle.</p>
+        <h1 className="font-display mb-1 text-xl font-semibold text-navy-900">Entrar no TripFlow</h1>
+        <p className="mb-6 text-sm text-navy-700/70">Organize a viagem em grupo sem perder o controle.</p>
 
         <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4">
           <Input label="E-mail" type="email" autoComplete="email" error={errors.email?.message} {...register("email")} />
@@ -63,13 +64,13 @@ export function LoginPage() {
           </Button>
         </form>
 
-        <p className="mt-6 text-center text-sm text-slate-500">
+        <p className="mt-6 text-center text-sm text-navy-700/70">
           Nao tem conta?{" "}
           <Link to="/register" className="font-medium text-brand-600 hover:text-brand-700">
             Criar conta
           </Link>
         </p>
       </Card>
-    </div>
+    </AuthLayout>
   );
 }
