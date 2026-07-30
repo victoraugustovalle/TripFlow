@@ -72,7 +72,7 @@ public class AuthController : ApiControllerBase
         var result = await _authService.RefreshAsync(rawToken, GetClientIp(), ct);
         if (!result.Succeeded)
         {
-            Response.Cookies.Delete(RefreshTokenCookie.Name);
+            RefreshTokenCookie.Clear(Response);
             return FromResult(result).Result!;
         }
 
@@ -93,7 +93,7 @@ public class AuthController : ApiControllerBase
             : null;
 
         await _authService.LogoutAsync(rawToken, jti, expiresAt, ct);
-        Response.Cookies.Delete(RefreshTokenCookie.Name);
+        RefreshTokenCookie.Clear(Response);
         return NoContent();
     }
 
