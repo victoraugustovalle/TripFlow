@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { searchGeocode } from "../api/geocoding";
 import * as itineraryApi from "../api/itinerary";
-import type { ItineraryItemInput } from "../api/itinerary";
+import type { ItineraryItemInput, ItineraryProposalInput } from "../api/itinerary";
 import { pushToast } from "../toast/toastStore";
 
 export function useItinerary(tripId: string) {
@@ -54,4 +54,38 @@ export function useDeleteItineraryItem(tripId: string) {
 /** Busca sob demanda (botao "Buscar") - o rate limit do geocoding e global (1 req/s pra API inteira via Nominatim), nao da pra sair buscando a cada tecla digitada. */
 export function useGeocodeSearch() {
   return useMutation({ mutationFn: (query: string) => searchGeocode(query) });
+}
+
+export function useCreateItineraryProposal(tripId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: ItineraryProposalInput) => itineraryApi.createItineraryProposal(tripId, input),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["itinerary", tripId] });
+      queryClient.invalidateQueries({ queryKey: ["overview", tripId] });
+      pushToast("Proposta criada - o grupo ja pode votar.");
+    },
+  });
+}
+
+export function useVoteItineraryProposal(tripId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ itemId, optionId }: { itemId: string; optionId: string }) =>
+      itineraryApi.voteItineraryProposal(tripId, itemId, optionId),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["itinerary", tripId] }),
+  });
+}
+
+export function useConfirmItineraryProposal(tripId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ itemId, optionId }: { itemId: string; optionId: string }) =>
+      itineraryApi.confirmItineraryProposal(tripId, itemId, optionId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["itinerary", tripId] });
+      queryClient.invalidateQueries({ queryKey: ["overview", tripId] });
+      pushToast("Proposta confirmada no roteiro.");
+    },
+  });
 }

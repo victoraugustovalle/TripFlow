@@ -19,6 +19,7 @@ public interface ITripHubClient
     Task ItineraryItemCreated(ItineraryItemDto item);
     Task ItineraryItemUpdated(ItineraryItemDto item);
     Task ItineraryItemDeleted(Guid itemId);
+    Task ItineraryVoteChanged(Guid itemId);
 
     Task ReservationCreated(ReservationDto reservation);
     Task ReservationUpdated(ReservationDto reservation);

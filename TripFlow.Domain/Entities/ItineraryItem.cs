@@ -22,5 +22,12 @@ public class ItineraryItem
 
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
+    public ItineraryItemStatus Status { get; set; } = ItineraryItemStatus.Confirmed;
+
     public ICollection<Reservation> Reservations { get; set; } = new List<Reservation>();
+
+    /// <summary>So relevante quando Status=Proposed - as alternativas concorrentes pro mesmo
+    /// slot (data/horario/tipo). Confirmar a proposta esvazia essa lista: o item vira "normal",
+    /// com os campos de local/coordenada copiados da opcao vencedora.</summary>
+    public ICollection<ItineraryProposalOption> ProposalOptions { get; set; } = new List<ItineraryProposalOption>();
 }

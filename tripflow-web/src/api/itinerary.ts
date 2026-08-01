@@ -13,6 +13,24 @@ export interface ItineraryItemInput {
   longitude: number | null;
 }
 
+export interface ItineraryProposalOptionInput {
+  title: string;
+  description: string | null;
+  location: string | null;
+  latitude: number | null;
+  longitude: number | null;
+}
+
+export interface ItineraryProposalInput {
+  title: string;
+  description: string | null;
+  type: ItineraryItemType;
+  itemDate: string;
+  startTime: string | null;
+  endTime: string | null;
+  options: ItineraryProposalOptionInput[];
+}
+
 export function listItinerary(tripId: string) {
   return apiFetch<ItineraryItemDto[]>(`/api/trips/${tripId}/itinerary`);
 }
@@ -31,4 +49,16 @@ export function updateItineraryItem(tripId: string, itemId: string, input: Itine
 
 export function deleteItineraryItem(tripId: string, itemId: string) {
   return apiFetch<void>(`/api/trips/${tripId}/itinerary/${itemId}`, { method: "DELETE" });
+}
+
+export function createItineraryProposal(tripId: string, input: ItineraryProposalInput) {
+  return apiFetch<ItineraryItemDto>(`/api/trips/${tripId}/itinerary/proposals`, { method: "POST", body: input });
+}
+
+export function voteItineraryProposal(tripId: string, itemId: string, optionId: string) {
+  return apiFetch<ItineraryItemDto>(`/api/trips/${tripId}/itinerary/${itemId}/vote`, { method: "POST", body: { optionId } });
+}
+
+export function confirmItineraryProposal(tripId: string, itemId: string, optionId: string) {
+  return apiFetch<ItineraryItemDto>(`/api/trips/${tripId}/itinerary/${itemId}/confirm`, { method: "POST", body: { optionId } });
 }

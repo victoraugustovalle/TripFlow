@@ -29,6 +29,8 @@ public interface IAppDbContext
     DbSet<SettlementRecord> SettlementRecords { get; }
     DbSet<TripMemory> TripMemories { get; }
     DbSet<ProactiveNudgeLog> ProactiveNudgeLogs { get; }
+    DbSet<ItineraryProposalOption> ItineraryProposalOptions { get; }
+    DbSet<ItineraryVote> ItineraryVotes { get; }
 
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 }

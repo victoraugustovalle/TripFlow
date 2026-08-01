@@ -32,6 +32,8 @@ public class TripFlowDbContext : DbContext, IAppDbContext
     public DbSet<SettlementRecord> SettlementRecords => Set<SettlementRecord>();
     public DbSet<TripMemory> TripMemories => Set<TripMemory>();
     public DbSet<ProactiveNudgeLog> ProactiveNudgeLogs => Set<ProactiveNudgeLog>();
+    public DbSet<ItineraryProposalOption> ItineraryProposalOptions => Set<ItineraryProposalOption>();
+    public DbSet<ItineraryVote> ItineraryVotes => Set<ItineraryVote>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

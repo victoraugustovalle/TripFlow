@@ -20,13 +20,16 @@ import { useDeleteReservation, useReservations } from "../reservations/hooks";
 import { formatDate, formatTime, itineraryItemTypeLabels } from "../utils/labels";
 import { DayMapModal } from "./DayMapModal";
 import { DaySummaryModal } from "./DaySummaryModal";
+import { ItineraryProposalFormModal } from "./ItineraryProposalFormModal";
 import {
+  useConfirmItineraryProposal,
   useCreateItineraryItem,
   useDeleteItineraryItem,
   useGeocodeSearch,
   useItinerary,
   useItineraryWeather,
   useUpdateItineraryItem,
+  useVoteItineraryProposal,
 } from "./hooks";
 
 /** Mostra so o que a previsao realmente traz - se faltar temperatura ou chuva prevista abaixo
@@ -191,6 +194,85 @@ function ItineraryItemRow({
   );
 }
 
+/** Uma proposta (Status=Proposed) em vez do item normal - mostra as opcoes concorrentes com
+ * contagem de votos em tempo real (via SignalR) em vez de local/mapa/reserva, que so fazem
+ * sentido depois que uma delas vira o item confirmado de verdade. */
+function ItineraryProposalCard({
+  item,
+  canEdit,
+  showDate,
+  onVote,
+  onConfirm,
+  isVoting,
+  isConfirming,
+}: {
+  item: ItineraryItemDto;
+  canEdit: boolean;
+  showDate: boolean;
+  onVote: (itemId: string, optionId: string) => void;
+  onConfirm: (itemId: string, optionId: string) => void;
+  isVoting: boolean;
+  isConfirming: boolean;
+}) {
+  const metaParts = [
+    showDate ? formatDate(item.itemDate) : null,
+    formatTime(item.startTime)
+      ? `${formatTime(item.startTime)}${formatTime(item.endTime) ? `-${formatTime(item.endTime)}` : ""}`
+      : null,
+  ].filter(Boolean);
+  const totalVotes = item.proposalOptions.reduce((sum, option) => sum + option.voteCount, 0);
+
+  return (
+    <li className="flex flex-col gap-2 rounded-xl border border-dashed border-amber-300 bg-amber-50/40 p-3">
+      <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+        <p className="text-sm font-medium text-navy-900">{item.title}</p>
+        <Badge tone="warning">Em votacao</Badge>
+        <Badge tone="neutral">{itineraryItemTypeLabels[item.type]}</Badge>
+        {metaParts.length > 0 && <span className="text-xs text-navy-700/50">{metaParts.join(" · ")}</span>}
+      </div>
+
+      <ul className="flex flex-col gap-2">
+        {item.proposalOptions.map((option) => {
+          const isMine = item.myVotedOptionId === option.id;
+          const percent = totalVotes > 0 ? Math.round((option.voteCount / totalVotes) * 100) : 0;
+          return (
+            <li key={option.id} className="rounded-lg border border-cream-300 bg-white p-2.5">
+              <div className="flex items-center justify-between gap-2">
+                <button
+                  type="button"
+                  onClick={() => onVote(item.id, option.id)}
+                  disabled={isVoting || isMine}
+                  className={`flex-1 text-left text-sm font-medium ${isMine ? "text-brand-700" : "text-navy-900 hover:text-brand-700"}`}
+                >
+                  {option.title}
+                  {isMine && <span className="ml-1.5 text-xs font-normal text-brand-600">(seu voto)</span>}
+                </button>
+                <span className="shrink-0 text-xs text-navy-700/60">
+                  {option.voteCount} {option.voteCount === 1 ? "voto" : "votos"}
+                </span>
+              </div>
+              {option.location && <p className="mt-0.5 text-xs text-navy-700/50">{option.location}</p>}
+              <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-cream-200">
+                <div className="h-full rounded-full bg-brand-500" style={{ width: `${percent}%` }} />
+              </div>
+              {canEdit && (
+                <button
+                  type="button"
+                  onClick={() => onConfirm(item.id, option.id)}
+                  disabled={isConfirming}
+                  className="mt-1.5 text-xs font-medium text-brand-700 hover:underline disabled:opacity-50"
+                >
+                  Confirmar esta opcao
+                </button>
+              )}
+            </li>
+          );
+        })}
+      </ul>
+    </li>
+  );
+}
+
 export function ItineraryPanel({
   tripId,
   myRole,
@@ -224,6 +306,10 @@ export function ItineraryPanel({
       { onSuccess: () => setDismissedSuggestions((prev) => new Set(prev).add(`${date}:${suggestion}`)) },
     );
   };
+
+  const [isProposalModalOpen, setIsProposalModalOpen] = useState(false);
+  const voteOnProposal = useVoteItineraryProposal(tripId);
+  const confirmProposal = useConfirmItineraryProposal(tripId);
 
   const [results, setResults] = useState<GeocodeResultDto[]>([]);
   const [selectedCoords, setSelectedCoords] = useState<{ latitude: number; longitude: number } | null>(null);
@@ -486,15 +572,21 @@ export function ItineraryPanel({
               <Button type="submit" isLoading={isSubmitting} className="flex-1">
                 {editingItemId ? "Salvar alteracoes" : "Adicionar ao roteiro"}
               </Button>
-              {editingItemId && (
+              {editingItemId ? (
                 <Button type="button" variant="secondary" onClick={cancelEdit}>
                   Cancelar
+                </Button>
+              ) : (
+                <Button type="button" variant="secondary" onClick={() => setIsProposalModalOpen(true)}>
+                  Propor opcoes
                 </Button>
               )}
             </div>
           </form>
         </Card>
       )}
+
+      {isProposalModalOpen && <ItineraryProposalFormModal tripId={tripId} onClose={() => setIsProposalModalOpen(false)} />}
 
       <Card>
         <div className="mb-4 flex items-center justify-between">
@@ -569,26 +661,39 @@ export function ItineraryPanel({
         )}
 
         {filteredItems.length > 0 && viewMode === "all" && (
-          <ul className="flex flex-col divide-y divide-cream-200">
-            {filteredItems.map((item) => (
-              <ItineraryItemRow
-                key={item.id}
-                item={item}
-                canEdit={canEdit}
-                showDate
-                currency={currency}
-                reservations={reservationsByItemId.get(item.id) ?? []}
-                onEdit={startEdit}
-                onDelete={(id) => deleteItem.mutate(id)}
-                onShowMap={setMapModalItem}
-                isDeleting={deleteItem.isPending}
-                onAddReservation={(itemId) => setReservationModal({ lockedItineraryItemId: itemId })}
-                onEditReservation={(reservation) => setReservationModal({ initial: reservation })}
-                onDeleteReservation={(id) => deleteReservation.mutate(id)}
-                isDeletingReservation={deleteReservation.isPending}
-                onLaunchExpense={onLaunchExpense}
-              />
-            ))}
+          <ul className="flex flex-col gap-2 divide-y divide-cream-200">
+            {filteredItems.map((item) =>
+              item.status === 1 ? (
+                <ItineraryProposalCard
+                  key={item.id}
+                  item={item}
+                  canEdit={canEdit}
+                  showDate
+                  onVote={(itemId, optionId) => voteOnProposal.mutate({ itemId, optionId })}
+                  onConfirm={(itemId, optionId) => confirmProposal.mutate({ itemId, optionId })}
+                  isVoting={voteOnProposal.isPending}
+                  isConfirming={confirmProposal.isPending}
+                />
+              ) : (
+                <ItineraryItemRow
+                  key={item.id}
+                  item={item}
+                  canEdit={canEdit}
+                  showDate
+                  currency={currency}
+                  reservations={reservationsByItemId.get(item.id) ?? []}
+                  onEdit={startEdit}
+                  onDelete={(id) => deleteItem.mutate(id)}
+                  onShowMap={setMapModalItem}
+                  isDeleting={deleteItem.isPending}
+                  onAddReservation={(itemId) => setReservationModal({ lockedItineraryItemId: itemId })}
+                  onEditReservation={(reservation) => setReservationModal({ initial: reservation })}
+                  onDeleteReservation={(id) => deleteReservation.mutate(id)}
+                  isDeletingReservation={deleteReservation.isPending}
+                  onLaunchExpense={onLaunchExpense}
+                />
+              ),
+            )}
           </ul>
         )}
 
@@ -650,26 +755,39 @@ export function ItineraryPanel({
                     </div>
                   )}
                 </div>
-                <ul className="flex flex-col divide-y divide-cream-200">
-                  {dayItems.map((item) => (
-                    <ItineraryItemRow
-                      key={item.id}
-                      item={item}
-                      canEdit={canEdit}
-                      showDate={false}
-                      currency={currency}
-                      reservations={reservationsByItemId.get(item.id) ?? []}
-                      onEdit={startEdit}
-                      onDelete={(id) => deleteItem.mutate(id)}
-                      onShowMap={setMapModalItem}
-                      isDeleting={deleteItem.isPending}
-                      onAddReservation={(itemId) => setReservationModal({ lockedItineraryItemId: itemId })}
-                      onEditReservation={(reservation) => setReservationModal({ initial: reservation })}
-                      onDeleteReservation={(id) => deleteReservation.mutate(id)}
-                      isDeletingReservation={deleteReservation.isPending}
-                      onLaunchExpense={onLaunchExpense}
-                    />
-                  ))}
+                <ul className="flex flex-col gap-2 divide-y divide-cream-200">
+                  {dayItems.map((item) =>
+                    item.status === 1 ? (
+                      <ItineraryProposalCard
+                        key={item.id}
+                        item={item}
+                        canEdit={canEdit}
+                        showDate={false}
+                        onVote={(itemId, optionId) => voteOnProposal.mutate({ itemId, optionId })}
+                        onConfirm={(itemId, optionId) => confirmProposal.mutate({ itemId, optionId })}
+                        isVoting={voteOnProposal.isPending}
+                        isConfirming={confirmProposal.isPending}
+                      />
+                    ) : (
+                      <ItineraryItemRow
+                        key={item.id}
+                        item={item}
+                        canEdit={canEdit}
+                        showDate={false}
+                        currency={currency}
+                        reservations={reservationsByItemId.get(item.id) ?? []}
+                        onEdit={startEdit}
+                        onDelete={(id) => deleteItem.mutate(id)}
+                        onShowMap={setMapModalItem}
+                        isDeleting={deleteItem.isPending}
+                        onAddReservation={(itemId) => setReservationModal({ lockedItineraryItemId: itemId })}
+                        onEditReservation={(reservation) => setReservationModal({ initial: reservation })}
+                        onDeleteReservation={(id) => deleteReservation.mutate(id)}
+                        isDeletingReservation={deleteReservation.isPending}
+                        onLaunchExpense={onLaunchExpense}
+                      />
+                    ),
+                  )}
                 </ul>
               </div>
               );
@@ -745,7 +863,7 @@ export function ItineraryPanel({
       {reservationModal && (
         <ReservationFormModal
           tripId={tripId}
-          itineraryItems={sortedItems}
+          itineraryItems={sortedItems.filter((item) => item.status !== 1)}
           lockedItineraryItemId={reservationModal.lockedItineraryItemId}
           initial={reservationModal.initial ?? null}
           onClose={() => setReservationModal(null)}

@@ -24,6 +24,10 @@ public interface ITripNotifier
     Task NotifyItineraryItemUpdatedAsync(Guid tripId, ItineraryItemDto item, CancellationToken cancellationToken = default);
     Task NotifyItineraryItemDeletedAsync(Guid tripId, Guid itemId, CancellationToken cancellationToken = default);
 
+    /// <summary>Sinal generico (sem payload de votos) pra "a contagem de votos dessa proposta
+    /// mudou" - o cliente so refaz o GET da lista de roteiro, igual ja faz pra ItineraryItemUpdated.</summary>
+    Task NotifyItineraryVoteChangedAsync(Guid tripId, Guid itemId, CancellationToken cancellationToken = default);
+
     Task NotifyReservationCreatedAsync(Guid tripId, ReservationDto reservation, CancellationToken cancellationToken = default);
     Task NotifyReservationUpdatedAsync(Guid tripId, ReservationDto reservation, CancellationToken cancellationToken = default);
     Task NotifyReservationDeletedAsync(Guid tripId, Guid reservationId, CancellationToken cancellationToken = default);

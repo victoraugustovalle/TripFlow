@@ -49,6 +49,7 @@ public static class DependencyInjection
         services.AddScoped<JournalService>();
         services.AddScoped<ProactiveNotificationService>();
         services.AddScoped<ItineraryWeatherService>();
+        services.AddScoped<ItineraryProposalService>();
 
         return services;
     }

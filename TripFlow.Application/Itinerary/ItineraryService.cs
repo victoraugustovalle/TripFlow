@@ -53,14 +53,20 @@ public class ItineraryService
         return dto;
     }
 
-    public async Task<IReadOnlyList<ItineraryItemDto>> ListAsync(Guid tripId, CancellationToken ct = default)
+    public async Task<IReadOnlyList<ItineraryItemDto>> ListAsync(Guid tripId, Guid actorUserId, CancellationToken ct = default)
     {
         var items = await _db.ItineraryItems.AsNoTracking()
+            .Include(i => i.ProposalOptions).ThenInclude(o => o.Votes)
             .Where(i => i.TripId == tripId)
             .OrderBy(i => i.ItemDate).ThenBy(i => i.StartTime)
             .ToListAsync(ct);
 
-        return items.Select(ToDto).ToList();
+        var myParticipantId = await _db.TripParticipants.AsNoTracking()
+            .Where(p => p.TripId == tripId && p.UserId == actorUserId)
+            .Select(p => (Guid?)p.Id)
+            .FirstOrDefaultAsync(ct);
+
+        return items.Select(item => ToDto(item, myParticipantId)).ToList();
     }
 
     public async Task<ServiceResult<ItineraryItemDto>> UpdateAsync(Guid tripId, Guid actorUserId, Guid itemId, UpdateItineraryItemRequest request, CancellationToken ct = default)
@@ -110,7 +116,20 @@ public class ItineraryService
         return ServiceResult<bool>.Success(true);
     }
 
-    private static ItineraryItemDto ToDto(ItineraryItem item) => new(
-        item.Id, item.Title, item.Description, item.Type, item.ItemDate, item.StartTime, item.EndTime,
-        item.Location, item.Latitude, item.Longitude, item.CreatedAt);
+    /// <summary>internal (nao private) pra ItineraryProposalService reaproveitar o mesmo
+    /// mapeamento em vez de duplicar a montagem de ProposalOptions/MyVotedOptionId.</summary>
+    internal static ItineraryItemDto ToDto(ItineraryItem item, Guid? myParticipantId = null)
+    {
+        var options = item.ProposalOptions
+            .Select(o => new ItineraryProposalOptionDto(o.Id, o.Title, o.Description, o.Location, o.Latitude, o.Longitude, o.Votes.Count))
+            .ToList();
+
+        var myVotedOptionId = myParticipantId is { } participantId
+            ? item.ProposalOptions.SelectMany(o => o.Votes).FirstOrDefault(v => v.ParticipantId == participantId)?.OptionId
+            : null;
+
+        return new ItineraryItemDto(
+            item.Id, item.Title, item.Description, item.Type, item.ItemDate, item.StartTime, item.EndTime,
+            item.Location, item.Latitude, item.Longitude, item.CreatedAt, item.Status, options, myVotedOptionId);
+    }
 }

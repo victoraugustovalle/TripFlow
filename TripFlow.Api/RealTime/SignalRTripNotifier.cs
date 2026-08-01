@@ -41,6 +41,9 @@ public class SignalRTripNotifier : ITripNotifier
     public Task NotifyItineraryItemDeletedAsync(Guid tripId, Guid itemId, CancellationToken cancellationToken = default) =>
         Group(tripId).ItineraryItemDeleted(itemId);
 
+    public Task NotifyItineraryVoteChangedAsync(Guid tripId, Guid itemId, CancellationToken cancellationToken = default) =>
+        Group(tripId).ItineraryVoteChanged(itemId);
+
     public Task NotifyReservationCreatedAsync(Guid tripId, ReservationDto reservation, CancellationToken cancellationToken = default) =>
         Group(tripId).ReservationCreated(reservation);
 
