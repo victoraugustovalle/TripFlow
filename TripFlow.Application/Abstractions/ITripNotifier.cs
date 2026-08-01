@@ -1,6 +1,8 @@
 using TripFlow.Application.Activity.DTOs;
 using TripFlow.Application.Checklist.DTOs;
 using TripFlow.Application.Expenses.DTOs;
+using TripFlow.Application.Itinerary.DTOs;
+using TripFlow.Application.Reservations.DTOs;
 
 namespace TripFlow.Application.Abstractions;
 
@@ -17,6 +19,18 @@ public interface ITripNotifier
     Task NotifyChecklistItemCreatedAsync(Guid tripId, ChecklistItemDto item, CancellationToken cancellationToken = default);
     Task NotifyChecklistItemUpdatedAsync(Guid tripId, ChecklistItemDto item, CancellationToken cancellationToken = default);
     Task NotifyChecklistItemDeletedAsync(Guid tripId, Guid itemId, CancellationToken cancellationToken = default);
+
+    Task NotifyItineraryItemCreatedAsync(Guid tripId, ItineraryItemDto item, CancellationToken cancellationToken = default);
+    Task NotifyItineraryItemUpdatedAsync(Guid tripId, ItineraryItemDto item, CancellationToken cancellationToken = default);
+    Task NotifyItineraryItemDeletedAsync(Guid tripId, Guid itemId, CancellationToken cancellationToken = default);
+
+    Task NotifyReservationCreatedAsync(Guid tripId, ReservationDto reservation, CancellationToken cancellationToken = default);
+    Task NotifyReservationUpdatedAsync(Guid tripId, ReservationDto reservation, CancellationToken cancellationToken = default);
+    Task NotifyReservationDeletedAsync(Guid tripId, Guid reservationId, CancellationToken cancellationToken = default);
+
+    /// <summary>Sinal generico pra qualquer mudanca na lista de participantes (convite, aceite,
+    /// recusa, troca de papel, remocao) - sem payload, so um sinal pra recarregar a lista.</summary>
+    Task NotifyParticipantsChangedAsync(Guid tripId, CancellationToken cancellationToken = default);
 
     /// <summary>Avisa quem estiver com a viagem aberta que uma notificacao nova foi criada - sem
     /// payload, so um sinal pra recarregar a lista (o conteudo em si vem do GET /api/notifications).</summary>

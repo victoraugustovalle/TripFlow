@@ -1,7 +1,9 @@
 using Microsoft.EntityFrameworkCore;
 using TripFlow.Application.Abstractions;
+using TripFlow.Application.Activity;
 using TripFlow.Application.Common;
 using TripFlow.Application.Documents.DTOs;
+using TripFlow.Application.Notifications;
 using TripFlow.Domain.Entities;
 using TripFlow.Domain.Enums;
 
@@ -11,11 +13,15 @@ public class DocumentService
 {
     private readonly IAppDbContext _db;
     private readonly IFileStorageService _fileStorage;
+    private readonly ActivityService _activityService;
+    private readonly NotificationService _notificationService;
 
-    public DocumentService(IAppDbContext db, IFileStorageService fileStorage)
+    public DocumentService(IAppDbContext db, IFileStorageService fileStorage, ActivityService activityService, NotificationService notificationService)
     {
         _db = db;
         _fileStorage = fileStorage;
+        _activityService = activityService;
+        _notificationService = notificationService;
     }
 
     public async Task<ServiceResult<DocumentDto>> UploadAsync(
@@ -57,14 +63,17 @@ public class DocumentService
         return ServiceResult<DocumentDto>.Success(ToDto(document));
     }
 
-    public async Task<IReadOnlyList<DocumentDto>> ListAsync(Guid tripId, CancellationToken ct = default)
+    public async Task<PagedResult<DocumentDto>> ListAsync(Guid tripId, DocumentListQuery query, CancellationToken ct = default)
     {
-        var documents = await _db.Documents.AsNoTracking()
-            .Where(d => d.TripId == tripId)
-            .OrderByDescending(d => d.CreatedAt)
-            .ToListAsync(ct);
+        var page = query.Page < 1 ? 1 : query.Page;
+        var pageSize = query.PageSize is < 1 or > 100 ? 20 : query.PageSize;
 
-        return documents.Select(ToDto).ToList();
+        var documentsQuery = _db.Documents.AsNoTracking().Where(d => d.TripId == tripId).OrderByDescending(d => d.CreatedAt);
+
+        var totalCount = await documentsQuery.CountAsync(ct);
+        var documents = await documentsQuery.Skip((page - 1) * pageSize).Take(pageSize).ToListAsync(ct);
+
+        return new PagedResult<DocumentDto>(documents.Select(ToDto).ToList(), totalCount, page, pageSize);
     }
 
     public async Task<ServiceResult<(Document Document, FileDownload Download)>> DownloadAsync(Guid tripId, Guid documentId, CancellationToken ct = default)
@@ -80,15 +89,20 @@ public class DocumentService
         return ServiceResult<(Document, FileDownload)>.Success((document, download));
     }
 
-    public async Task<ServiceResult<bool>> DeleteAsync(Guid tripId, Guid documentId, CancellationToken ct = default)
+    public async Task<ServiceResult<bool>> DeleteAsync(Guid tripId, Guid actorUserId, Guid documentId, CancellationToken ct = default)
     {
         var document = await _db.Documents.FirstOrDefaultAsync(d => d.Id == documentId && d.TripId == tripId, ct);
         if (document is null)
             return ServiceResult<bool>.Failure(ServiceErrorType.NotFound, "Documento nao encontrado.");
 
+        var fileName = document.FileName;
+
         await _fileStorage.DeleteAsync(document.StorageKey, ct);
         _db.Documents.Remove(document);
         await _db.SaveChangesAsync(ct);
+
+        var (_, actorName) = await _activityService.ResolveActorAsync(tripId, actorUserId, ct);
+        await _notificationService.NotifyTripAsync(tripId, actorUserId, NotificationType.DocumentDeleted, $"{actorName} removeu o documento \"{fileName}\".", ct);
 
         return ServiceResult<bool>.Success(true);
     }

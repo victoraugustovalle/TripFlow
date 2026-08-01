@@ -1,7 +1,9 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using TripFlow.Application.Abstractions;
+using TripFlow.Application.Activity;
 using TripFlow.Application.Common;
+using TripFlow.Application.Notifications;
 using TripFlow.Application.Participants.DTOs;
 using TripFlow.Domain.Entities;
 using TripFlow.Domain.Enums;
@@ -15,12 +17,20 @@ public class ParticipantService
     private readonly IAppDbContext _db;
     private readonly IEmailSender _emailSender;
     private readonly ILogger<ParticipantService> _logger;
+    private readonly NotificationService _notificationService;
+    private readonly ITripNotifier _tripNotifier;
+    private readonly ActivityService _activityService;
 
-    public ParticipantService(IAppDbContext db, IEmailSender emailSender, ILogger<ParticipantService> logger)
+    public ParticipantService(
+        IAppDbContext db, IEmailSender emailSender, ILogger<ParticipantService> logger,
+        NotificationService notificationService, ITripNotifier tripNotifier, ActivityService activityService)
     {
         _db = db;
         _emailSender = emailSender;
         _logger = logger;
+        _notificationService = notificationService;
+        _tripNotifier = tripNotifier;
+        _activityService = activityService;
     }
 
     public async Task<ServiceResult<ParticipantDto>> InviteAsync(Guid tripId, InviteParticipantRequest request, CancellationToken ct = default)
@@ -60,6 +70,7 @@ public class ParticipantService
             _logger.LogWarning(ex, "Falha ao enviar e-mail de convite para {Email}", normalizedEmail);
         }
 
+        await _tripNotifier.NotifyParticipantsChangedAsync(tripId, ct);
         return ServiceResult<ParticipantDto>.Success(ToDto(participant));
     }
 
@@ -82,6 +93,21 @@ public class ParticipantService
         participant.InviteTokenExpiresAt = null;
 
         await _db.SaveChangesAsync(ct);
+
+        var ownersToNotify = await _db.TripParticipants.AsNoTracking()
+            .Where(p => p.TripId == tripId && p.Role == TripRole.Owner && p.Status == ParticipantStatus.Accepted
+                && p.UserId != null && p.UserId != currentUserId)
+            .Select(p => p.UserId!.Value)
+            .ToListAsync(ct);
+
+        foreach (var ownerId in ownersToNotify)
+            await _notificationService.NotifyAsync(tripId, ownerId, NotificationType.ParticipantJoined, $"{currentUserName.Trim()} entrou na viagem.", ct);
+
+        await _tripNotifier.NotifyParticipantsChangedAsync(tripId, ct);
+
+        await _activityService.RecordAsync(tripId, participant.Id, currentUserId, ActivityType.ParticipantJoined, nameof(TripParticipant), participant.Id,
+            $"{currentUserName.Trim()} entrou na viagem.", ct);
+
         return ServiceResult<ParticipantDto>.Success(ToDto(participant));
     }
 
@@ -99,6 +125,7 @@ public class ParticipantService
         participant.InviteTokenExpiresAt = null;
 
         await _db.SaveChangesAsync(ct);
+        await _tripNotifier.NotifyParticipantsChangedAsync(tripId, ct);
         return ServiceResult<bool>.Success(true);
     }
 
@@ -119,6 +146,7 @@ public class ParticipantService
 
         participant.Role = request.Role;
         await _db.SaveChangesAsync(ct);
+        await _tripNotifier.NotifyParticipantsChangedAsync(tripId, ct);
         return ServiceResult<bool>.Success(true);
     }
 
@@ -133,6 +161,7 @@ public class ParticipantService
 
         _db.TripParticipants.Remove(participant);
         await _db.SaveChangesAsync(ct);
+        await _tripNotifier.NotifyParticipantsChangedAsync(tripId, ct);
         return ServiceResult<bool>.Success(true);
     }
 

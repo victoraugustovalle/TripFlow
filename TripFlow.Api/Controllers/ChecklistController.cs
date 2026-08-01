@@ -22,7 +22,7 @@ public class ChecklistController : ApiControllerBase
     [Authorize(Policy = AuthorizationExtensions.TripEditorPolicy)]
     public async Task<ActionResult<ChecklistItemDto>> Create(Guid tripId, [FromBody] CreateChecklistItemRequest request, CancellationToken ct)
     {
-        return Ok(await _checklistService.CreateAsync(tripId, request, ct));
+        return Ok(await _checklistService.CreateAsync(tripId, User.GetUserId(), request, ct));
     }
 
     /// <summary>Lista os itens do checklist, pendentes primeiro, ordenados por data limite. Requer ser participante da viagem.</summary>
@@ -38,7 +38,7 @@ public class ChecklistController : ApiControllerBase
     [Authorize(Policy = AuthorizationExtensions.TripEditorPolicy)]
     public async Task<ActionResult<ChecklistItemDto>> Update(Guid tripId, Guid itemId, [FromBody] UpdateChecklistItemRequest request, CancellationToken ct)
     {
-        return FromResult(await _checklistService.UpdateAsync(tripId, itemId, request, ct));
+        return FromResult(await _checklistService.UpdateAsync(tripId, User.GetUserId(), itemId, request, ct));
     }
 
     /// <summary>Remove um item do checklist. Requer papel Editor ou Owner.</summary>
@@ -46,7 +46,7 @@ public class ChecklistController : ApiControllerBase
     [Authorize(Policy = AuthorizationExtensions.TripEditorPolicy)]
     public async Task<IActionResult> Delete(Guid tripId, Guid itemId, CancellationToken ct)
     {
-        var result = await _checklistService.DeleteAsync(tripId, itemId, ct);
+        var result = await _checklistService.DeleteAsync(tripId, User.GetUserId(), itemId, ct);
         return result.Succeeded ? NoContent() : FromResult(result).Result!;
     }
 }

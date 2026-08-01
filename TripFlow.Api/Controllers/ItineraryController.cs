@@ -22,7 +22,7 @@ public class ItineraryController : ApiControllerBase
     [Authorize(Policy = AuthorizationExtensions.TripEditorPolicy)]
     public async Task<ActionResult<ItineraryItemDto>> Create(Guid tripId, [FromBody] CreateItineraryItemRequest request, CancellationToken ct)
     {
-        return Ok(await _itineraryService.CreateAsync(tripId, request, ct));
+        return Ok(await _itineraryService.CreateAsync(tripId, User.GetUserId(), request, ct));
     }
 
     /// <summary>Lista o roteiro completo da viagem, ordenado por data e horario.</summary>
@@ -38,7 +38,7 @@ public class ItineraryController : ApiControllerBase
     [Authorize(Policy = AuthorizationExtensions.TripEditorPolicy)]
     public async Task<ActionResult<ItineraryItemDto>> Update(Guid tripId, Guid itemId, [FromBody] UpdateItineraryItemRequest request, CancellationToken ct)
     {
-        return FromResult(await _itineraryService.UpdateAsync(tripId, itemId, request, ct));
+        return FromResult(await _itineraryService.UpdateAsync(tripId, User.GetUserId(), itemId, request, ct));
     }
 
     /// <summary>Remove um item de roteiro. Se houver reserva vinculada, ela permanece, so perde o vinculo. Requer papel Editor ou Owner.</summary>
@@ -46,7 +46,7 @@ public class ItineraryController : ApiControllerBase
     [Authorize(Policy = AuthorizationExtensions.TripEditorPolicy)]
     public async Task<IActionResult> Delete(Guid tripId, Guid itemId, CancellationToken ct)
     {
-        var result = await _itineraryService.DeleteAsync(tripId, itemId, ct);
+        var result = await _itineraryService.DeleteAsync(tripId, User.GetUserId(), itemId, ct);
         return result.Succeeded ? NoContent() : FromResult(result).Result!;
     }
 }

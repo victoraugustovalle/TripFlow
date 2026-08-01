@@ -1,21 +1,30 @@
 using Microsoft.EntityFrameworkCore;
 using TripFlow.Application.Abstractions;
+using TripFlow.Application.Activity;
 using TripFlow.Application.Common;
+using TripFlow.Application.Notifications;
 using TripFlow.Application.Reservations.DTOs;
 using TripFlow.Domain.Entities;
+using TripFlow.Domain.Enums;
 
 namespace TripFlow.Application.Reservations;
 
 public class ReservationService
 {
     private readonly IAppDbContext _db;
+    private readonly ITripNotifier _tripNotifier;
+    private readonly ActivityService _activityService;
+    private readonly NotificationService _notificationService;
 
-    public ReservationService(IAppDbContext db)
+    public ReservationService(IAppDbContext db, ITripNotifier tripNotifier, ActivityService activityService, NotificationService notificationService)
     {
         _db = db;
+        _tripNotifier = tripNotifier;
+        _activityService = activityService;
+        _notificationService = notificationService;
     }
 
-    public async Task<ServiceResult<ReservationDto>> CreateAsync(Guid tripId, CreateReservationRequest request, CancellationToken ct = default)
+    public async Task<ServiceResult<ReservationDto>> CreateAsync(Guid tripId, Guid actorUserId, CreateReservationRequest request, CancellationToken ct = default)
     {
         if (request.ItineraryItemId is not null && !await ItineraryItemBelongsToTripAsync(tripId, request.ItineraryItemId.Value, ct))
             return ServiceResult<ReservationDto>.Failure(ServiceErrorType.Validation, "O item de roteiro informado nao pertence a essa viagem.");
@@ -40,7 +49,17 @@ public class ReservationService
 
         _db.Reservations.Add(reservation);
         await _db.SaveChangesAsync(ct);
-        return ServiceResult<ReservationDto>.Success(ToDto(reservation));
+
+        var dto = ToDto(reservation);
+        await _tripNotifier.NotifyReservationCreatedAsync(tripId, dto, ct);
+
+        var (actorParticipantId, actorName) = await _activityService.ResolveActorAsync(tripId, actorUserId, ct);
+        await _activityService.RecordAsync(tripId, actorParticipantId, actorUserId, ActivityType.ReservationCreated, nameof(Reservation), reservation.Id,
+            $"{actorName} adicionou a reserva \"{reservation.Title}\".", ct);
+
+        await _notificationService.NotifyTripAsync(tripId, actorUserId, NotificationType.ReservationCreated, $"{actorName} adicionou a reserva \"{reservation.Title}\".", ct);
+
+        return ServiceResult<ReservationDto>.Success(dto);
     }
 
     public async Task<IReadOnlyList<ReservationDto>> ListAsync(Guid tripId, CancellationToken ct = default)
@@ -53,7 +72,7 @@ public class ReservationService
         return reservations.Select(ToDto).ToList();
     }
 
-    public async Task<ServiceResult<ReservationDto>> UpdateAsync(Guid tripId, Guid reservationId, UpdateReservationRequest request, CancellationToken ct = default)
+    public async Task<ServiceResult<ReservationDto>> UpdateAsync(Guid tripId, Guid actorUserId, Guid reservationId, UpdateReservationRequest request, CancellationToken ct = default)
     {
         var reservation = await _db.Reservations.FirstOrDefaultAsync(r => r.Id == reservationId && r.TripId == tripId, ct);
         if (reservation is null)
@@ -77,17 +96,33 @@ public class ReservationService
         reservation.ItineraryItemId = request.ItineraryItemId;
 
         await _db.SaveChangesAsync(ct);
-        return ServiceResult<ReservationDto>.Success(ToDto(reservation));
+
+        var dto = ToDto(reservation);
+        await _tripNotifier.NotifyReservationUpdatedAsync(tripId, dto, ct);
+
+        var (_, actorName) = await _activityService.ResolveActorAsync(tripId, actorUserId, ct);
+        await _notificationService.NotifyTripAsync(tripId, actorUserId, NotificationType.ReservationUpdated, $"{actorName} atualizou a reserva \"{reservation.Title}\".", ct);
+
+        return ServiceResult<ReservationDto>.Success(dto);
     }
 
-    public async Task<ServiceResult<bool>> DeleteAsync(Guid tripId, Guid reservationId, CancellationToken ct = default)
+    public async Task<ServiceResult<bool>> DeleteAsync(Guid tripId, Guid actorUserId, Guid reservationId, CancellationToken ct = default)
     {
         var reservation = await _db.Reservations.FirstOrDefaultAsync(r => r.Id == reservationId && r.TripId == tripId, ct);
         if (reservation is null)
             return ServiceResult<bool>.Failure(ServiceErrorType.NotFound, "Reserva nao encontrada.");
 
+        var title = reservation.Title;
+
         _db.Reservations.Remove(reservation);
         await _db.SaveChangesAsync(ct);
+
+        await _tripNotifier.NotifyReservationDeletedAsync(tripId, reservationId, ct);
+
+        var (actorParticipantId, actorName) = await _activityService.ResolveActorAsync(tripId, actorUserId, ct);
+        await _activityService.RecordAsync(tripId, actorParticipantId, actorUserId, ActivityType.ReservationDeleted, nameof(Reservation), reservationId,
+            $"{actorName} removeu a reserva \"{title}\".", ct);
+
         return ServiceResult<bool>.Success(true);
     }
 

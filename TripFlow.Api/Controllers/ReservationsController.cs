@@ -22,7 +22,7 @@ public class ReservationsController : ApiControllerBase
     [Authorize(Policy = AuthorizationExtensions.TripEditorPolicy)]
     public async Task<ActionResult<ReservationDto>> Create(Guid tripId, [FromBody] CreateReservationRequest request, CancellationToken ct)
     {
-        return FromResult(await _reservationService.CreateAsync(tripId, request, ct));
+        return FromResult(await _reservationService.CreateAsync(tripId, User.GetUserId(), request, ct));
     }
 
     /// <summary>Lista as reservas da viagem, ordenadas por data de inicio.</summary>
@@ -38,7 +38,7 @@ public class ReservationsController : ApiControllerBase
     [Authorize(Policy = AuthorizationExtensions.TripEditorPolicy)]
     public async Task<ActionResult<ReservationDto>> Update(Guid tripId, Guid reservationId, [FromBody] UpdateReservationRequest request, CancellationToken ct)
     {
-        return FromResult(await _reservationService.UpdateAsync(tripId, reservationId, request, ct));
+        return FromResult(await _reservationService.UpdateAsync(tripId, User.GetUserId(), reservationId, request, ct));
     }
 
     /// <summary>Remove uma reserva. Requer papel Editor ou Owner.</summary>
@@ -46,7 +46,7 @@ public class ReservationsController : ApiControllerBase
     [Authorize(Policy = AuthorizationExtensions.TripEditorPolicy)]
     public async Task<IActionResult> Delete(Guid tripId, Guid reservationId, CancellationToken ct)
     {
-        var result = await _reservationService.DeleteAsync(tripId, reservationId, ct);
+        var result = await _reservationService.DeleteAsync(tripId, User.GetUserId(), reservationId, ct);
         return result.Succeeded ? NoContent() : FromResult(result).Result!;
     }
 }

@@ -13,6 +13,7 @@ export function useInviteParticipant(tripId: string) {
     mutationFn: ({ email, role }: { email: string; role: TripRole }) => participantsApi.inviteParticipant(tripId, email, role),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["participants", tripId] });
+      queryClient.invalidateQueries({ queryKey: ["overview", tripId] });
       pushToast("Convite enviado.");
     },
   });
@@ -24,6 +25,7 @@ export function useRemoveParticipant(tripId: string) {
     mutationFn: (participantId: string) => participantsApi.removeParticipant(tripId, participantId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["participants", tripId] });
+      queryClient.invalidateQueries({ queryKey: ["overview", tripId] });
       pushToast("Participante removido.");
     },
   });

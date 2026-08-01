@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using TripFlow.Api.Authorization;
+using TripFlow.Application.Common;
 using TripFlow.Application.Documents;
 using TripFlow.Application.Documents.DTOs;
 using TripFlow.Domain.Enums;
@@ -32,12 +33,12 @@ public class DocumentsController : ApiControllerBase
         return FromResult(result);
     }
 
-    /// <summary>Lista os documentos da viagem, do mais recente pro mais antigo. Requer ser participante da viagem.</summary>
+    /// <summary>Lista os documentos da viagem, paginado e do mais recente pro mais antigo. Requer ser participante da viagem.</summary>
     [HttpGet]
     [Authorize(Policy = AuthorizationExtensions.TripViewerPolicy)]
-    public async Task<ActionResult<IReadOnlyList<DocumentDto>>> List(Guid tripId, CancellationToken ct)
+    public async Task<ActionResult<PagedResult<DocumentDto>>> List(Guid tripId, [FromQuery] DocumentListQuery query, CancellationToken ct)
     {
-        return Ok(await _documentService.ListAsync(tripId, ct));
+        return Ok(await _documentService.ListAsync(tripId, query, ct));
     }
 
     /// <summary>Baixa o conteudo do documento. Requer ser participante da viagem.</summary>
@@ -58,7 +59,7 @@ public class DocumentsController : ApiControllerBase
     [Authorize(Policy = AuthorizationExtensions.TripEditorPolicy)]
     public async Task<IActionResult> Delete(Guid tripId, Guid documentId, CancellationToken ct)
     {
-        var result = await _documentService.DeleteAsync(tripId, documentId, ct);
+        var result = await _documentService.DeleteAsync(tripId, User.GetUserId(), documentId, ct);
         return result.Succeeded ? NoContent() : FromResult(result).Result!;
     }
 }

@@ -1,21 +1,30 @@
 using Microsoft.EntityFrameworkCore;
 using TripFlow.Application.Abstractions;
+using TripFlow.Application.Activity;
 using TripFlow.Application.Common;
 using TripFlow.Application.Itinerary.DTOs;
+using TripFlow.Application.Notifications;
 using TripFlow.Domain.Entities;
+using TripFlow.Domain.Enums;
 
 namespace TripFlow.Application.Itinerary;
 
 public class ItineraryService
 {
     private readonly IAppDbContext _db;
+    private readonly ITripNotifier _tripNotifier;
+    private readonly ActivityService _activityService;
+    private readonly NotificationService _notificationService;
 
-    public ItineraryService(IAppDbContext db)
+    public ItineraryService(IAppDbContext db, ITripNotifier tripNotifier, ActivityService activityService, NotificationService notificationService)
     {
         _db = db;
+        _tripNotifier = tripNotifier;
+        _activityService = activityService;
+        _notificationService = notificationService;
     }
 
-    public async Task<ItineraryItemDto> CreateAsync(Guid tripId, CreateItineraryItemRequest request, CancellationToken ct = default)
+    public async Task<ItineraryItemDto> CreateAsync(Guid tripId, Guid actorUserId, CreateItineraryItemRequest request, CancellationToken ct = default)
     {
         var item = new ItineraryItem
         {
@@ -33,7 +42,15 @@ public class ItineraryService
 
         _db.ItineraryItems.Add(item);
         await _db.SaveChangesAsync(ct);
-        return ToDto(item);
+
+        var dto = ToDto(item);
+        await _tripNotifier.NotifyItineraryItemCreatedAsync(tripId, dto, ct);
+
+        var (actorParticipantId, actorName) = await _activityService.ResolveActorAsync(tripId, actorUserId, ct);
+        await _activityService.RecordAsync(tripId, actorParticipantId, actorUserId, ActivityType.ItineraryItemCreated, nameof(ItineraryItem), item.Id,
+            $"{actorName} adicionou \"{item.Title}\" ao roteiro.", ct);
+
+        return dto;
     }
 
     public async Task<IReadOnlyList<ItineraryItemDto>> ListAsync(Guid tripId, CancellationToken ct = default)
@@ -46,7 +63,7 @@ public class ItineraryService
         return items.Select(ToDto).ToList();
     }
 
-    public async Task<ServiceResult<ItineraryItemDto>> UpdateAsync(Guid tripId, Guid itemId, UpdateItineraryItemRequest request, CancellationToken ct = default)
+    public async Task<ServiceResult<ItineraryItemDto>> UpdateAsync(Guid tripId, Guid actorUserId, Guid itemId, UpdateItineraryItemRequest request, CancellationToken ct = default)
     {
         var item = await _db.ItineraryItems.FirstOrDefaultAsync(i => i.Id == itemId && i.TripId == tripId, ct);
         if (item is null)
@@ -63,17 +80,33 @@ public class ItineraryService
         item.Longitude = request.Longitude;
 
         await _db.SaveChangesAsync(ct);
-        return ServiceResult<ItineraryItemDto>.Success(ToDto(item));
+
+        var dto = ToDto(item);
+        await _tripNotifier.NotifyItineraryItemUpdatedAsync(tripId, dto, ct);
+
+        var (_, actorName) = await _activityService.ResolveActorAsync(tripId, actorUserId, ct);
+        await _notificationService.NotifyTripAsync(tripId, actorUserId, NotificationType.ItineraryItemUpdated, $"{actorName} atualizou \"{item.Title}\" no roteiro.", ct);
+
+        return ServiceResult<ItineraryItemDto>.Success(dto);
     }
 
-    public async Task<ServiceResult<bool>> DeleteAsync(Guid tripId, Guid itemId, CancellationToken ct = default)
+    public async Task<ServiceResult<bool>> DeleteAsync(Guid tripId, Guid actorUserId, Guid itemId, CancellationToken ct = default)
     {
         var item = await _db.ItineraryItems.FirstOrDefaultAsync(i => i.Id == itemId && i.TripId == tripId, ct);
         if (item is null)
             return ServiceResult<bool>.Failure(ServiceErrorType.NotFound, "Item de roteiro nao encontrado.");
 
+        var title = item.Title;
+
         _db.ItineraryItems.Remove(item);
         await _db.SaveChangesAsync(ct);
+
+        await _tripNotifier.NotifyItineraryItemDeletedAsync(tripId, itemId, ct);
+
+        var (actorParticipantId, actorName) = await _activityService.ResolveActorAsync(tripId, actorUserId, ct);
+        await _activityService.RecordAsync(tripId, actorParticipantId, actorUserId, ActivityType.ItineraryItemDeleted, nameof(ItineraryItem), itemId,
+            $"{actorName} removeu \"{title}\" do roteiro.", ct);
+
         return ServiceResult<bool>.Success(true);
     }
 

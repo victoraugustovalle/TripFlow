@@ -7,12 +7,20 @@ export function useChecklist(tripId: string) {
   return useQuery({ queryKey: ["checklist", tripId], queryFn: () => checklistApi.listChecklist(tripId) });
 }
 
+export interface CreateChecklistItemInput {
+  title: string;
+  assignedToParticipantId: string | null;
+  dueDate: string | null;
+}
+
 export function useCreateChecklistItem(tripId: string) {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (title: string) => checklistApi.createChecklistItem(tripId, title),
+    mutationFn: (input: CreateChecklistItemInput) =>
+      checklistApi.createChecklistItem(tripId, input.title, input.assignedToParticipantId, input.dueDate),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["checklist", tripId] });
+      queryClient.invalidateQueries({ queryKey: ["overview", tripId] });
       pushToast("Item adicionado a checklist.");
     },
   });
@@ -28,7 +36,10 @@ export function useToggleChecklistItem(tripId: string) {
         assignedToParticipantId: item.assignedToParticipantId,
         dueDate: item.dueDate,
       }),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["checklist", tripId] }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["checklist", tripId] });
+      queryClient.invalidateQueries({ queryKey: ["overview", tripId] });
+    },
   });
 }
 
@@ -38,6 +49,7 @@ export function useDeleteChecklistItem(tripId: string) {
     mutationFn: (itemId: string) => checklistApi.deleteChecklistItem(tripId, itemId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["checklist", tripId] });
+      queryClient.invalidateQueries({ queryKey: ["overview", tripId] });
       pushToast("Item removido da checklist.");
     },
   });
