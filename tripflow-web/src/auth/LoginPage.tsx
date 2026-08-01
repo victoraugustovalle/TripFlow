@@ -11,6 +11,7 @@ import { Card } from "../components/Card";
 import { Input } from "../components/Input";
 import { AuthLayout } from "./AuthLayout";
 import { useAuthStore } from "./authStore";
+import { GoogleSignInButton } from "./GoogleSignInButton";
 
 const schema = z.object({
   email: z.string().email("Informe um e-mail valido."),
@@ -63,6 +64,10 @@ export function LoginPage() {
             Entrar
           </Button>
         </form>
+
+        <div className="mt-5">
+          <GoogleSignInButton />
+        </div>
 
         <p className="mt-6 text-center text-sm text-navy-700/70">
           Nao tem conta?{" "}

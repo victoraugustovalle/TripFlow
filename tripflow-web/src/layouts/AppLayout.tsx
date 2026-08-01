@@ -29,7 +29,9 @@ export function AppLayout() {
           </Link>
           <div className="flex items-center gap-2">
             <NotificationBell />
-            <span className="text-sm text-navy-700">{user?.name}</span>
+            <Link to="/profile" className="text-sm text-navy-700 hover:underline">
+              {user?.name}
+            </Link>
             <Button variant="ghost" onClick={handleLogout}>
               Sair
             </Button>

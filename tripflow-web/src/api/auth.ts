@@ -13,6 +13,10 @@ export function login(email: string, password: string) {
   return apiFetch<LoginResponse>("/api/auth/login", { method: "POST", body: { email, password }, skipAuth: true });
 }
 
+export function loginWithGoogle(idToken: string) {
+  return apiFetch<LoginResponse>("/api/auth/google", { method: "POST", body: { idToken }, skipAuth: true });
+}
+
 export function verifyTwoFactor(email: string, challengeToken: string, code?: string, recoveryCode?: string) {
   return apiFetch<AccessTokenResponse>("/api/auth/2fa/verify", {
     method: "POST",
