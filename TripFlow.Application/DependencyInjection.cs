@@ -10,6 +10,7 @@ using TripFlow.Application.Documents;
 using TripFlow.Application.Expenses;
 using TripFlow.Application.Itinerary;
 using TripFlow.Application.Notifications;
+using TripFlow.Application.Overview;
 using TripFlow.Application.Participants;
 using TripFlow.Application.Reservations;
 using TripFlow.Application.Retrospective;
@@ -42,6 +43,8 @@ public static class DependencyInjection
         services.AddScoped<SettlementService>();
         services.AddScoped<RetrospectiveService>();
         services.AddScoped<TripMemoryService>();
+        services.AddScoped<TripReadinessService>();
+        services.AddScoped<OverviewService>();
 
         return services;
     }
