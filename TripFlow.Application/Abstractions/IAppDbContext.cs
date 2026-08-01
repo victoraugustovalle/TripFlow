@@ -27,6 +27,7 @@ public interface IAppDbContext
     DbSet<NotificationMute> NotificationMutes { get; }
     DbSet<ActivityLogEntry> ActivityLogEntries { get; }
     DbSet<SettlementRecord> SettlementRecords { get; }
+    DbSet<TripMemory> TripMemories { get; }
 
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 }
