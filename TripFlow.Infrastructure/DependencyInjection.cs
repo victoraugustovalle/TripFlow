@@ -10,6 +10,7 @@ using TripFlow.Infrastructure.Email;
 using TripFlow.Infrastructure.Geocoding;
 using TripFlow.Infrastructure.Security;
 using TripFlow.Infrastructure.Storage;
+using TripFlow.Infrastructure.Weather;
 
 namespace TripFlow.Infrastructure;
 
@@ -40,6 +41,11 @@ public static class DependencyInjection
         {
             client.BaseAddress = new Uri("https://nominatim.openstreetmap.org/");
             client.DefaultRequestHeaders.UserAgent.ParseAdd("TripFlow/1.0 (projeto de portfolio - github.com/victoraugusto3215/TripFlow)");
+        });
+
+        services.AddHttpClient<IWeatherService, OpenMeteoWeatherService>(client =>
+        {
+            client.BaseAddress = new Uri("https://api.open-meteo.com/");
         });
 
         // R2 so entra se estiver configurado - sem credencial, cai pro disco local (dev).
