@@ -1,9 +1,24 @@
-export function Alert({ message, variant = "error" }: { message: string; variant?: "error" | "success" | "info" }) {
+import type { ReactNode } from "react";
+
+export function Alert({
+  message,
+  variant = "error",
+  action,
+}: {
+  message: string;
+  variant?: "error" | "success" | "info";
+  action?: ReactNode;
+}) {
   const classes = {
     error: "bg-coral-50 text-coral-700 border-coral-200",
     success: "bg-brand-50 text-brand-700 border-brand-200",
     info: "bg-cream-100 text-navy-900 border-cream-300",
   }[variant];
 
-  return <div className={`rounded-lg border px-3 py-2 text-sm ${classes}`}>{message}</div>;
+  return (
+    <div className={`flex items-center justify-between gap-3 rounded-lg border px-3 py-2 text-sm ${classes}`}>
+      <span>{message}</span>
+      {action}
+    </div>
+  );
 }

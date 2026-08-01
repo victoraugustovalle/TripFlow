@@ -3,7 +3,7 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { getErrorMessage } from "../api/errors";
-import type { GeocodeResultDto, ItineraryItemDto, ItineraryItemType, ReservationDto, TripRole } from "../api/types";
+import type { GeocodeResultDto, ItineraryDayWeatherDto, ItineraryItemDto, ItineraryItemType, ReservationDto, TripRole } from "../api/types";
 import { Alert } from "../components/Alert";
 import { Badge } from "../components/Badge";
 import { Button } from "../components/Button";
@@ -13,13 +13,34 @@ import { Input } from "../components/Input";
 import { MapView } from "../components/MapView";
 import { Modal } from "../components/Modal";
 import { SkeletonLines } from "../components/Skeleton";
+import { useCreateChecklistItem } from "../checklist/hooks";
 import { ReservationFormModal } from "../reservations/ReservationFormModal";
 import { ReservationSummary } from "../reservations/ReservationSummary";
 import { useDeleteReservation, useReservations } from "../reservations/hooks";
 import { formatDate, formatTime, itineraryItemTypeLabels } from "../utils/labels";
 import { DayMapModal } from "./DayMapModal";
 import { DaySummaryModal } from "./DaySummaryModal";
-import { useCreateItineraryItem, useDeleteItineraryItem, useGeocodeSearch, useItinerary, useUpdateItineraryItem } from "./hooks";
+import {
+  useCreateItineraryItem,
+  useDeleteItineraryItem,
+  useGeocodeSearch,
+  useItinerary,
+  useItineraryWeather,
+  useUpdateItineraryItem,
+} from "./hooks";
+
+/** Mostra so o que a previsao realmente traz - se faltar temperatura ou chuva prevista abaixo
+ * do limiar de sugestao, o texto correspondente simplesmente nao aparece. */
+function formatWeatherBadge(weather: ItineraryDayWeatherDto) {
+  const temps = [weather.temperatureMaxC, weather.temperatureMinC].filter((t): t is number => t != null).map((t) => `${Math.round(t)}°`);
+  const tempText = temps.length > 0 ? temps.join(" / ") : null;
+  const rainText =
+    weather.precipitationProbabilityPercent != null && weather.precipitationProbabilityPercent >= 30
+      ? `${Math.round(weather.precipitationProbabilityPercent)}% chuva`
+      : null;
+
+  return [tempText, rainText].filter(Boolean).join(" · ") || null;
+}
 
 const schema = z.object({
   title: z.string().min(1, "Informe um titulo."),
@@ -191,6 +212,18 @@ export function ItineraryPanel({
 
   const { data: reservations } = useReservations(tripId);
   const deleteReservation = useDeleteReservation(tripId);
+
+  const { data: weatherForecast } = useItineraryWeather(tripId);
+  const createChecklistItem = useCreateChecklistItem(tripId);
+  const [dismissedSuggestions, setDismissedSuggestions] = useState<Set<string>>(new Set());
+  const weatherByDate = new Map((weatherForecast ?? []).map((weather) => [weather.date, weather]));
+
+  const addSuggestedChecklistItem = (date: string, suggestion: string) => {
+    createChecklistItem.mutate(
+      { title: suggestion, assignedToParticipantId: null, dueDate: date },
+      { onSuccess: () => setDismissedSuggestions((prev) => new Set(prev).add(`${date}:${suggestion}`)) },
+    );
+  };
 
   const [results, setResults] = useState<GeocodeResultDto[]>([]);
   const [selectedCoords, setSelectedCoords] = useState<{ latitude: number; longitude: number } | null>(null);
@@ -563,26 +596,59 @@ export function ItineraryPanel({
           <div className="flex flex-col gap-6">
             {groupedByDay.map(([date, dayItems], index) => {
               const isToday = isOngoing && date === todayIso;
+              const dayWeather = weatherByDate.get(date);
+              const weatherBadgeText = dayWeather ? formatWeatherBadge(dayWeather) : null;
+              const pendingSuggestions = (dayWeather?.suggestedChecklistItems ?? []).filter(
+                (suggestion) => !dismissedSuggestions.has(`${date}:${suggestion}`),
+              );
               return (
               <div key={date} className={isToday ? "-mx-3 rounded-xl border border-brand-200 bg-brand-50/40 px-3 py-2" : undefined}>
-                <div className="mb-1 flex items-center justify-between gap-2 border-b border-brand-100 pb-2">
-                  <div className="flex items-baseline gap-2">
-                    <span className="rounded-full bg-brand-600 px-2.5 py-0.5 text-xs font-semibold text-white">Dia {index + 1}</span>
-                    <span className="text-sm font-medium text-navy-900">{formatDate(date)}</span>
-                    {isToday && <Badge tone="success">Hoje</Badge>}
+                <div className="mb-1 flex flex-col gap-2 border-b border-brand-100 pb-2">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div className="flex flex-wrap items-baseline gap-2">
+                      <span className="rounded-full bg-brand-600 px-2.5 py-0.5 text-xs font-semibold text-white">Dia {index + 1}</span>
+                      <span className="text-sm font-medium text-navy-900">{formatDate(date)}</span>
+                      {isToday && <Badge tone="success">Hoje</Badge>}
+                      {weatherBadgeText && (
+                        <Badge tone={dayWeather && (dayWeather.precipitationProbabilityPercent ?? 0) >= 50 ? "warning" : "neutral"}>
+                          {weatherBadgeText}
+                        </Badge>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <button
+                        type="button"
+                        onClick={() => setDaySummaryDate(date)}
+                        className="text-xs font-medium text-brand-700 hover:underline"
+                      >
+                        Resumo do dia
+                      </button>
+                      {dayItems.some((item) => item.latitude != null && item.longitude != null) && (
+                        <MapLinkButton onClick={() => setDayMapDate(date)}>Ver mapa do dia</MapLinkButton>
+                      )}
+                    </div>
                   </div>
-                  <div className="flex items-center gap-3">
-                    <button
-                      type="button"
-                      onClick={() => setDaySummaryDate(date)}
-                      className="text-xs font-medium text-brand-700 hover:underline"
-                    >
-                      Resumo do dia
-                    </button>
-                    {dayItems.some((item) => item.latitude != null && item.longitude != null) && (
-                      <MapLinkButton onClick={() => setDayMapDate(date)}>Ver mapa do dia</MapLinkButton>
-                    )}
-                  </div>
+
+                  {canEdit && pendingSuggestions.length > 0 && (
+                    <div className="flex flex-col gap-1.5">
+                      {pendingSuggestions.map((suggestion) => (
+                        <Alert
+                          key={suggestion}
+                          variant="info"
+                          message={`Previsao pede atencao nesse dia - adicionar "${suggestion}" ao checklist?`}
+                          action={
+                            <Button
+                              variant="secondary"
+                              disabled={createChecklistItem.isPending}
+                              onClick={() => addSuggestedChecklistItem(date, suggestion)}
+                            >
+                              Adicionar
+                            </Button>
+                          }
+                        />
+                      ))}
+                    </div>
+                  )}
                 </div>
                 <ul className="flex flex-col divide-y divide-cream-200">
                   {dayItems.map((item) => (

@@ -11,10 +11,12 @@ namespace TripFlow.Api.Controllers;
 public class ItineraryController : ApiControllerBase
 {
     private readonly ItineraryService _itineraryService;
+    private readonly ItineraryWeatherService _itineraryWeatherService;
 
-    public ItineraryController(ItineraryService itineraryService)
+    public ItineraryController(ItineraryService itineraryService, ItineraryWeatherService itineraryWeatherService)
     {
         _itineraryService = itineraryService;
+        _itineraryWeatherService = itineraryWeatherService;
     }
 
     /// <summary>Cria um item de roteiro (atividade, transporte, hospedagem, refeicao...) numa data e horario da viagem. Requer papel Editor ou Owner.</summary>
@@ -31,6 +33,15 @@ public class ItineraryController : ApiControllerBase
     public async Task<ActionResult<IReadOnlyList<ItineraryItemDto>>> List(Guid tripId, CancellationToken ct)
     {
         return Ok(await _itineraryService.ListAsync(tripId, ct));
+    }
+
+    /// <summary>Previsao do tempo dos proximos dias do roteiro que tem coordenadas, com
+    /// sugestoes de item de checklist (ex.: "Guarda-chuva" se chuva e provavel).</summary>
+    [HttpGet("weather")]
+    [Authorize(Policy = AuthorizationExtensions.TripViewerPolicy)]
+    public async Task<ActionResult<IReadOnlyList<ItineraryDayWeatherDto>>> GetWeather(Guid tripId, CancellationToken ct)
+    {
+        return Ok(await _itineraryWeatherService.GetForecastAsync(tripId, ct));
     }
 
     /// <summary>Atualiza um item de roteiro. Requer papel Editor ou Owner.</summary>

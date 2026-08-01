@@ -1,5 +1,5 @@
 import { apiFetch } from "./client";
-import type { ItineraryItemDto, ItineraryItemType } from "./types";
+import type { ItineraryDayWeatherDto, ItineraryItemDto, ItineraryItemType } from "./types";
 
 export interface ItineraryItemInput {
   title: string;
@@ -15,6 +15,10 @@ export interface ItineraryItemInput {
 
 export function listItinerary(tripId: string) {
   return apiFetch<ItineraryItemDto[]>(`/api/trips/${tripId}/itinerary`);
+}
+
+export function getItineraryWeather(tripId: string) {
+  return apiFetch<ItineraryDayWeatherDto[]>(`/api/trips/${tripId}/itinerary/weather`);
 }
 
 export function createItineraryItem(tripId: string, input: ItineraryItemInput) {

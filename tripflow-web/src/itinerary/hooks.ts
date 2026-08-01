@@ -8,12 +8,19 @@ export function useItinerary(tripId: string) {
   return useQuery({ queryKey: ["itinerary", tripId], queryFn: () => itineraryApi.listItinerary(tripId) });
 }
 
+/** So tem previsao pros proximos ~10 dias (limite do provedor) - dias fora dessa janela ou sem
+ * nenhum item com coordenadas simplesmente nao aparecem na resposta. */
+export function useItineraryWeather(tripId: string) {
+  return useQuery({ queryKey: ["itinerary", tripId, "weather"], queryFn: () => itineraryApi.getItineraryWeather(tripId) });
+}
+
 export function useCreateItineraryItem(tripId: string) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (input: ItineraryItemInput) => itineraryApi.createItineraryItem(tripId, input),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["itinerary", tripId] });
+      queryClient.invalidateQueries({ queryKey: ["overview", tripId] });
       pushToast("Item adicionado ao roteiro.");
     },
   });
@@ -26,6 +33,7 @@ export function useUpdateItineraryItem(tripId: string) {
       itineraryApi.updateItineraryItem(tripId, itemId, input),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["itinerary", tripId] });
+      queryClient.invalidateQueries({ queryKey: ["overview", tripId] });
       pushToast("Alteracoes salvas.");
     },
   });
@@ -37,6 +45,7 @@ export function useDeleteItineraryItem(tripId: string) {
     mutationFn: (itemId: string) => itineraryApi.deleteItineraryItem(tripId, itemId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["itinerary", tripId] });
+      queryClient.invalidateQueries({ queryKey: ["overview", tripId] });
       pushToast("Item removido do roteiro.");
     },
   });
