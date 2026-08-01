@@ -25,6 +25,7 @@ public interface IAppDbContext
     DbSet<TwoFactorRecoveryCode> TwoFactorRecoveryCodes { get; }
     DbSet<Notification> Notifications { get; }
     DbSet<NotificationMute> NotificationMutes { get; }
+    DbSet<ActivityLogEntry> ActivityLogEntries { get; }
 
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 }

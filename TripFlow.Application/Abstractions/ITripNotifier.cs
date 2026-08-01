@@ -1,3 +1,4 @@
+using TripFlow.Application.Activity.DTOs;
 using TripFlow.Application.Checklist.DTOs;
 using TripFlow.Application.Expenses.DTOs;
 
@@ -20,4 +21,8 @@ public interface ITripNotifier
     /// <summary>Avisa quem estiver com a viagem aberta que uma notificacao nova foi criada - sem
     /// payload, so um sinal pra recarregar a lista (o conteudo em si vem do GET /api/notifications).</summary>
     Task NotifyNotificationCreatedAsync(Guid tripId, CancellationToken cancellationToken = default);
+
+    /// <summary>Avisa quem estiver com a viagem aberta que um evento novo entrou na timeline -
+    /// com payload, pra inserir direto na lista sem precisar de um refetch.</summary>
+    Task NotifyActivityCreatedAsync(Guid tripId, ActivityLogEntryDto entry, CancellationToken cancellationToken = default);
 }

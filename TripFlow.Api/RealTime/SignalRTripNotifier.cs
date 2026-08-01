@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.SignalR;
 using TripFlow.Application.Abstractions;
+using TripFlow.Application.Activity.DTOs;
 using TripFlow.Application.Checklist.DTOs;
 using TripFlow.Application.Expenses.DTOs;
 
@@ -31,6 +32,9 @@ public class SignalRTripNotifier : ITripNotifier
 
     public Task NotifyNotificationCreatedAsync(Guid tripId, CancellationToken cancellationToken = default) =>
         Group(tripId).NotificationCreated();
+
+    public Task NotifyActivityCreatedAsync(Guid tripId, ActivityLogEntryDto entry, CancellationToken cancellationToken = default) =>
+        Group(tripId).ActivityCreated(entry);
 
     private ITripHubClient Group(Guid tripId) => _hubContext.Clients.Group(TripHub.GroupName(tripId));
 }

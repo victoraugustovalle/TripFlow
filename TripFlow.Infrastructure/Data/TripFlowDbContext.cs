@@ -28,6 +28,7 @@ public class TripFlowDbContext : DbContext, IAppDbContext
     public DbSet<TwoFactorRecoveryCode> TwoFactorRecoveryCodes => Set<TwoFactorRecoveryCode>();
     public DbSet<Notification> Notifications => Set<Notification>();
     public DbSet<NotificationMute> NotificationMutes => Set<NotificationMute>();
+    public DbSet<ActivityLogEntry> ActivityLogEntries => Set<ActivityLogEntry>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

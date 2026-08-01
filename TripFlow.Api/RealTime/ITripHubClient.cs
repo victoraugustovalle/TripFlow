@@ -1,3 +1,4 @@
+using TripFlow.Application.Activity.DTOs;
 using TripFlow.Application.Checklist.DTOs;
 using TripFlow.Application.Expenses.DTOs;
 
@@ -14,4 +15,10 @@ public interface ITripHubClient
     Task ChecklistItemDeleted(Guid itemId);
 
     Task NotificationCreated();
+
+    Task ActivityCreated(ActivityLogEntryDto entry);
+
+    /// <summary>Lista completa de quem esta com essa viagem aberta agora (nao um delta) - mais
+    /// simples pro cliente so substituir o estado local do que reconciliar entra/sai.</summary>
+    Task PresenceChanged(IReadOnlyList<PresenceUser> onlineUsers);
 }

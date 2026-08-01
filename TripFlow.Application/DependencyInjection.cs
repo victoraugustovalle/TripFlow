@@ -1,6 +1,7 @@
 using FluentValidation;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using TripFlow.Application.Activity;
 using TripFlow.Application.Auth;
 using TripFlow.Application.Budgets;
 using TripFlow.Application.Checklist;
@@ -36,6 +37,7 @@ public static class DependencyInjection
         services.AddScoped<DocumentService>();
         services.AddScoped<TwoFactorService>();
         services.AddScoped<NotificationService>();
+        services.AddScoped<ActivityService>();
 
         return services;
     }

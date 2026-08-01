@@ -10,6 +10,7 @@ public static class RealTimeExtensions
     {
         services.AddSignalR();
         services.AddScoped<ITripNotifier, SignalRTripNotifier>();
+        services.AddSingleton<TripPresenceTracker>();
         return services;
     }
 
