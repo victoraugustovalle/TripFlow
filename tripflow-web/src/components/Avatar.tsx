@@ -1,4 +1,13 @@
-const PALETTE = ["#0B7A70", "#C5401F", "#92600A", "#0E9488", "#F04E2C", "#095F58"];
+// Referencia direta aos custom properties do @theme (ver index.css) em vez de hex
+// duplicado - assim a paleta do avatar nunca dessincroniza da paleta da marca.
+const PALETTE = [
+  "var(--color-brand-700)",
+  "var(--color-coral-700)",
+  "var(--color-amber-700)",
+  "var(--color-brand-600)",
+  "var(--color-coral-600)",
+  "var(--color-brand-800)",
+];
 
 function hashString(value: string) {
   let hash = 0;

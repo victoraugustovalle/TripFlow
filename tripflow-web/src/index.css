@@ -13,7 +13,11 @@
   --color-brand-800: #095f58;
   --color-brand-900: #073f3a;
 
-  /* Voo — coral (destaque / CTA) */
+  /* Voo — coral (perigo / erro / divida pendente). NAO usar em CTA/acao positiva:
+     brand-700 ja e a cor de acao primaria (ver Button.tsx variant="primary"); reservar
+     coral para variant="danger"/"ghostDanger", Alert de erro, Badge tone="danger" e
+     estados de "voce deve" / orcamento estourado, pra nao misturar "clique aqui" com
+     "algo deu errado" no mesmo tom. */
   --color-coral-50: #fff1ec;
   --color-coral-100: #ffe1d5;
   --color-coral-200: #ffc3ac;
@@ -28,7 +32,10 @@
   /* Voo — amber (atencao / pendente) */
   --color-amber-50: #fff7e6;
   --color-amber-200: #f5d48a;
+  --color-amber-300: #f5c468;
+  --color-amber-400: #f5b546;
   --color-amber-500: #f5a524;
+  --color-amber-600: #c48317;
   --color-amber-700: #92600a;
 
   /* Voo — cream (fundo) e navy (texto) */
@@ -83,10 +90,65 @@ body {
   animation: toast-out 200ms ease-in forwards;
 }
 
+@keyframes readiness-bounce {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-4px);
+  }
+}
+
+.readiness-bounce {
+  animation: readiness-bounce 1.2s ease-in-out infinite;
+}
+
+@keyframes skeleton-shimmer {
+  0% {
+    background-position: -150% 0;
+  }
+  100% {
+    background-position: 150% 0;
+  }
+}
+
+.skeleton-shimmer {
+  background-image: linear-gradient(90deg, var(--color-cream-200) 25%, var(--color-brand-100) 50%, var(--color-cream-200) 75%);
+  background-size: 200% 100%;
+  animation: skeleton-shimmer 1.6s ease-in-out infinite;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .toast-enter,
-  .toast-leave {
+  .toast-leave,
+  .readiness-bounce {
     animation: none;
+  }
+
+  .skeleton-shimmer {
+    animation: none;
+    background-image: none;
+    background-color: var(--color-cream-200);
+  }
+}
+
+/* Impressao do resumo do dia (DaySummaryModal) - esconde o resto da pagina (incluindo o
+   cabecalho/overlay do proprio Modal) e deixa so o conteudo marcado preencher a folha. */
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  .print-day-summary,
+  .print-day-summary * {
+    visibility: visible;
+  }
+  .print-day-summary {
+    position: fixed;
+    inset: 0;
+    box-shadow: none;
+    max-width: none;
+    padding: 1.5rem;
   }
 }
 
