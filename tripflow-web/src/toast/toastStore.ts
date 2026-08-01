@@ -3,7 +3,9 @@ import { create } from "zustand";
 export interface Toast {
   id: number;
   message: string;
-  variant: "success" | "error";
+  /** "info" e pra eventos de tempo real (algo que outra pessoa fez) - visualmente distinto de
+   * "success"/"error", que sao sempre feedback da sua propria acao. */
+  variant: "success" | "error" | "info";
 }
 
 interface ToastState {
