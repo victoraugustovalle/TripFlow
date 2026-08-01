@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useAuthStore } from "../auth/authStore";
 import { ChecklistPanel } from "../checklist/ChecklistPanel";
+import { Avatar } from "../components/Avatar";
 import { BackLink } from "../components/BackLink";
 import { Badge } from "../components/Badge";
 import { Button } from "../components/Button";
@@ -10,11 +11,17 @@ import { FlightTrail } from "../components/FlightTrail";
 import { Input } from "../components/Input";
 import { Modal } from "../components/Modal";
 import { Spinner } from "../components/Spinner";
+import { DocumentsPanel } from "../documents/DocumentsPanel";
+import { useExpenseDraftStore } from "../expenses/expenseDraftStore";
 import { ExpensesPanel } from "../expenses/ExpensesPanel";
+import { reservationToExpenseDraft } from "../expenses/reservationToExpenseDraft";
 import { ItineraryPanel } from "../itinerary/ItineraryPanel";
+import { NotificationPreferencesModal } from "../notifications/NotificationPreferencesModal";
+import { OverviewPanel } from "../overview/OverviewPanel";
 import { ParticipantsPanel } from "../participants/ParticipantsPanel";
 import { useParticipants } from "../participants/hooks";
 import { useTripRealtime } from "../realtime/useTripRealtime";
+import { RetrospectivePanel } from "../retrospective/RetrospectivePanel";
 import { pushToast } from "../toast/toastStore";
 import { tripStatusLabels, tripStatusTone } from "../utils/labels";
 import { useDeleteTrip, useTrip, useUpdateTrip } from "./hooks";
@@ -32,25 +39,27 @@ function PencilIcon() {
   );
 }
 
-type Tab = "expenses" | "checklist" | "itinerary" | "participants";
+type Tab = "overview" | "expenses" | "checklist" | "itinerary" | "documents" | "participants";
 
 export function TripDetailPage() {
   const { tripId } = useParams<{ tripId: string }>();
   const navigate = useNavigate();
   const user = useAuthStore((s) => s.user);
-  const [tab, setTab] = useState<Tab>("expenses");
+  const [tab, setTab] = useState<Tab>("overview");
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [confirmName, setConfirmName] = useState("");
   const [isEditingName, setIsEditingName] = useState(false);
   const [nameDraft, setNameDraft] = useState("");
   const [isCoverModalOpen, setIsCoverModalOpen] = useState(false);
+  const [isNotificationPrefsOpen, setIsNotificationPrefsOpen] = useState(false);
 
   const { data: trip, isLoading: isLoadingTrip } = useTrip(tripId!);
   const { data: participants, isLoading: isLoadingParticipants } = useParticipants(tripId!);
   const deleteTrip = useDeleteTrip();
   const updateTrip = useUpdateTrip(tripId!);
 
-  useTripRealtime(tripId!);
+  const { onlineUsers } = useTripRealtime(tripId!);
+  const othersOnline = onlineUsers.filter((u) => u.userId !== user?.id);
 
   if (isLoadingTrip || isLoadingParticipants) return <Spinner />;
   if (!trip || !participants) return <p className="text-sm text-coral-700">Viagem nao encontrada.</p>;
@@ -106,6 +115,16 @@ export function TripDetailPage() {
     navigate("/");
   };
 
+  const isCompleted = trip.status === 2;
+  const tabs: Array<[Tab, string]> = [
+    ["overview", isCompleted ? "Retrospectiva" : "Visao geral"],
+    ["expenses", "Gastos"],
+    ["checklist", "Checklist"],
+    ["itinerary", "Roteiro"],
+    ["documents", "Documentos"],
+    ["participants", "Participantes"],
+  ];
+
   return (
     <div className="flex flex-col gap-6">
       <BackLink to="/" label="Voltar pras viagens" />
@@ -132,6 +151,10 @@ export function TripDetailPage() {
 
       {isCoverModalOpen && (
         <CoverPickerModal onSelect={handleSelectCover} onClose={() => setIsCoverModalOpen(false)} />
+      )}
+
+      {isNotificationPrefsOpen && (
+        <NotificationPreferencesModal tripId={trip.id} onClose={() => setIsNotificationPrefsOpen(false)} />
       )}
 
       <div className="flex items-start justify-between">
@@ -181,11 +204,30 @@ export function TripDetailPage() {
             <Badge tone={tripStatusTone[trip.status]}>{tripStatusLabels[trip.status]}</Badge>
           </div>
         </div>
-        {myRole === 2 && (
-          <Button variant="danger" onClick={() => setIsDeleteModalOpen(true)}>
-            Apagar viagem
-          </Button>
-        )}
+        <div className="flex shrink-0 flex-col items-end gap-2">
+          {othersOnline.length > 0 && (
+            <div className="flex items-center gap-2" title={othersOnline.map((u) => u.displayName).join(", ")}>
+              <div className="flex -space-x-2">
+                {othersOnline.slice(0, 4).map((u) => (
+                  <Avatar key={u.userId} name={u.displayName} className="h-6 w-6 border-2 border-white text-[10px]" />
+                ))}
+              </div>
+              <span className="text-xs text-navy-700/60">
+                {othersOnline.length === 1 ? `${othersOnline[0].displayName} esta aqui agora` : `${othersOnline.length} pessoas aqui agora`}
+              </span>
+            </div>
+          )}
+          <div className="flex items-center gap-2">
+            <Button variant="ghost" onClick={() => setIsNotificationPrefsOpen(true)}>
+              Preferencias de notificacao
+            </Button>
+            {myRole === 2 && (
+              <Button variant="danger" onClick={() => setIsDeleteModalOpen(true)}>
+                Apagar viagem
+              </Button>
+            )}
+          </div>
+        </div>
       </div>
 
       {isDeleteModalOpen && (
@@ -222,14 +264,7 @@ export function TripDetailPage() {
 
       <div className="overflow-x-auto">
         <div className="flex w-fit gap-1 rounded-full border border-cream-300 p-1">
-          {(
-            [
-              ["expenses", "Gastos"],
-              ["checklist", "Checklist"],
-              ["itinerary", "Roteiro"],
-              ["participants", "Participantes"],
-            ] as const
-          ).map(([key, label]) => (
+          {tabs.map(([key, label]) => (
             <button
               key={key}
               onClick={() => setTab(key)}
@@ -243,11 +278,29 @@ export function TripDetailPage() {
         </div>
       </div>
 
+      {tab === "overview" &&
+        (isCompleted ? (
+          <RetrospectivePanel tripId={trip.id} currency={trip.currency} participants={participants} />
+        ) : (
+          <OverviewPanel tripId={trip.id} currency={trip.currency} participants={participants} onNavigate={setTab} />
+        ))}
       {tab === "expenses" && (
         <ExpensesPanel tripId={trip.id} myRole={myRole} participants={participants} currency={trip.currency} />
       )}
-      {tab === "checklist" && <ChecklistPanel tripId={trip.id} myRole={myRole} />}
-      {tab === "itinerary" && <ItineraryPanel tripId={trip.id} myRole={myRole} />}
+      {tab === "checklist" && <ChecklistPanel tripId={trip.id} myRole={myRole} participants={participants} />}
+      {tab === "itinerary" && (
+        <ItineraryPanel
+          tripId={trip.id}
+          myRole={myRole}
+          currency={trip.currency}
+          isOngoing={trip.status === 1}
+          onLaunchExpense={(reservation) => {
+            useExpenseDraftStore.getState().setDraft(reservationToExpenseDraft(reservation));
+            setTab("expenses");
+          }}
+        />
+      )}
+      {tab === "documents" && <DocumentsPanel tripId={trip.id} myRole={myRole} />}
       {tab === "participants" && <ParticipantsPanel tripId={trip.id} myRole={myRole} />}
     </div>
   );

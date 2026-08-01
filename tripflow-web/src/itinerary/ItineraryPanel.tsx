@@ -1,9 +1,9 @@
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { getErrorMessage } from "../api/errors";
-import type { GeocodeResultDto, ItineraryItemDto, ItineraryItemType, TripRole } from "../api/types";
+import type { GeocodeResultDto, ItineraryItemDto, ItineraryItemType, ReservationDto, TripRole } from "../api/types";
 import { Alert } from "../components/Alert";
 import { Badge } from "../components/Badge";
 import { Button } from "../components/Button";
@@ -13,8 +13,12 @@ import { Input } from "../components/Input";
 import { MapView } from "../components/MapView";
 import { Modal } from "../components/Modal";
 import { SkeletonLines } from "../components/Skeleton";
+import { ReservationFormModal } from "../reservations/ReservationFormModal";
+import { ReservationSummary } from "../reservations/ReservationSummary";
+import { useDeleteReservation, useReservations } from "../reservations/hooks";
 import { formatDate, formatTime, itineraryItemTypeLabels } from "../utils/labels";
 import { DayMapModal } from "./DayMapModal";
+import { DaySummaryModal } from "./DaySummaryModal";
 import { useCreateItineraryItem, useDeleteItineraryItem, useGeocodeSearch, useItinerary, useUpdateItineraryItem } from "./hooks";
 
 const schema = z.object({
@@ -39,22 +43,66 @@ function toTimeOnly(value: string | undefined) {
 
 type ViewMode = "byDay" | "all";
 
+function MapPinIcon() {
+  return (
+    <svg viewBox="0 0 16 16" className="h-3.5 w-3.5" fill="none" aria-hidden="true">
+      <path
+        d="M8 14.5s5-4.3 5-8.3a5 5 0 1 0-10 0c0 4 5 8.3 5 8.3Z"
+        stroke="currentColor"
+        strokeWidth="1.3"
+        strokeLinejoin="round"
+      />
+      <circle cx="8" cy="6.2" r="1.7" stroke="currentColor" strokeWidth="1.3" />
+    </svg>
+  );
+}
+
+/** Acao de mapa tem peso (abre um mapa, nao e so navegacao) - por Fitts's Law, ganha
+ * affordance de botao e alvo de toque maior em vez de link de texto simples. */
+function MapLinkButton({ onClick, children }: { onClick: () => void; children: ReactNode }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="inline-flex items-center gap-1.5 rounded-full border border-brand-200 bg-brand-50 px-3 py-1.5 text-xs
+        font-semibold text-brand-700 transition-colors hover:bg-brand-100"
+    >
+      <MapPinIcon />
+      {children}
+    </button>
+  );
+}
+
 function ItineraryItemRow({
   item,
   canEdit,
   showDate,
+  currency,
+  reservations,
   onEdit,
   onDelete,
   onShowMap,
   isDeleting,
+  onAddReservation,
+  onEditReservation,
+  onDeleteReservation,
+  isDeletingReservation,
+  onLaunchExpense,
 }: {
   item: ItineraryItemDto;
   canEdit: boolean;
   showDate: boolean;
+  currency: string;
+  reservations: ReservationDto[];
   onEdit: (item: ItineraryItemDto) => void;
   onDelete: (itemId: string) => void;
   onShowMap: (item: ItineraryItemDto) => void;
   isDeleting: boolean;
+  onAddReservation: (itemId: string) => void;
+  onEditReservation: (reservation: ReservationDto) => void;
+  onDeleteReservation: (reservationId: string) => void;
+  isDeletingReservation: boolean;
+  onLaunchExpense: (reservation: ReservationDto) => void;
 }) {
   const metaParts = [
     showDate ? formatDate(item.itemDate) : null,
@@ -75,9 +123,9 @@ function ItineraryItemRow({
           </div>
           {item.description && <p className="mt-1 text-sm text-navy-700/70">{item.description}</p>}
           {item.latitude != null && item.longitude != null && (
-            <button type="button" onClick={() => onShowMap(item)} className="mt-1 text-xs font-medium text-brand-700 hover:underline">
-              Ver no mapa
-            </button>
+            <div className="mt-2">
+              <MapLinkButton onClick={() => onShowMap(item)}>Ver no mapa</MapLinkButton>
+            </div>
           )}
         </div>
         {canEdit && (
@@ -91,27 +139,86 @@ function ItineraryItemRow({
           </div>
         )}
       </div>
+
+      {reservations.length > 0 && (
+        <div className="flex flex-col gap-2">
+          {reservations.map((reservation) => (
+            <ReservationSummary
+              key={reservation.id}
+              reservation={reservation}
+              currency={currency}
+              canEdit={canEdit}
+              onEdit={onEditReservation}
+              onDelete={onDeleteReservation}
+              isDeleting={isDeletingReservation}
+              onLaunchExpense={onLaunchExpense}
+            />
+          ))}
+        </div>
+      )}
+
+      {canEdit && (
+        <button
+          type="button"
+          onClick={() => onAddReservation(item.id)}
+          className="self-start text-xs font-medium text-brand-700 hover:underline"
+        >
+          + Vincular reserva
+        </button>
+      )}
     </li>
   );
 }
 
-export function ItineraryPanel({ tripId, myRole }: { tripId: string; myRole: TripRole | undefined }) {
+export function ItineraryPanel({
+  tripId,
+  myRole,
+  currency,
+  isOngoing = false,
+  onLaunchExpense,
+}: {
+  tripId: string;
+  myRole: TripRole | undefined;
+  currency: string;
+  isOngoing?: boolean;
+  onLaunchExpense: (reservation: ReservationDto) => void;
+}) {
   const { data: items, isLoading } = useItinerary(tripId);
   const createItem = useCreateItineraryItem(tripId);
   const updateItem = useUpdateItineraryItem(tripId);
   const deleteItem = useDeleteItineraryItem(tripId);
   const geocodeSearch = useGeocodeSearch();
 
+  const { data: reservations } = useReservations(tripId);
+  const deleteReservation = useDeleteReservation(tripId);
+
   const [results, setResults] = useState<GeocodeResultDto[]>([]);
   const [selectedCoords, setSelectedCoords] = useState<{ latitude: number; longitude: number } | null>(null);
   const [mapModalItem, setMapModalItem] = useState<ItineraryItemDto | null>(null);
   const [dayMapDate, setDayMapDate] = useState<string | null>(null);
+  const [daySummaryDate, setDaySummaryDate] = useState<string | null>(null);
   const [editingItemId, setEditingItemId] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<ViewMode>("byDay");
+  const [reservationModal, setReservationModal] = useState<{ lockedItineraryItemId?: string; initial?: ReservationDto } | null>(
+    null,
+  );
+  const [typeFilter, setTypeFilter] = useState("");
+  const [searchFilter, setSearchFilter] = useState("");
   const lastPickedRef = useRef<string | null>(null);
   const searchIdRef = useRef(0);
 
   const canEdit = myRole === 1 || myRole === 2;
+  const reservationsByItemId = new Map<string, ReservationDto[]>();
+  const unlinkedReservations: ReservationDto[] = [];
+  for (const reservation of reservations ?? []) {
+    if (reservation.itineraryItemId) {
+      const list = reservationsByItemId.get(reservation.itineraryItemId) ?? [];
+      list.push(reservation);
+      reservationsByItemId.set(reservation.itineraryItemId, list);
+    } else {
+      unlinkedReservations.push(reservation);
+    }
+  }
 
   const {
     register,
@@ -226,8 +333,22 @@ export function ItineraryPanel({ tripId, myRole }: { tripId: string; myRole: Tri
     (a, b) => a.itemDate.localeCompare(b.itemDate) || (a.startTime ?? "").localeCompare(b.startTime ?? ""),
   );
 
+  // So pro que aparece na tela - o modal de reserva continua usando sortedItems (lista
+  // completa) pro select de "vincular a um item", independente do filtro aplicado aqui.
+  const filteredItems = sortedItems.filter((item) => {
+    if (typeFilter !== "" && String(item.type) !== typeFilter) return false;
+
+    const term = searchFilter.trim().toLowerCase();
+    if (!term) return true;
+
+    return item.title.toLowerCase().includes(term) || (item.location ?? "").toLowerCase().includes(term);
+  });
+  const hasItineraryFilters = typeFilter !== "" || searchFilter.trim() !== "";
+
+  const todayIso = new Date().toISOString().slice(0, 10);
+
   const groupedByDay: [string, ItineraryItemDto[]][] = [];
-  for (const item of sortedItems) {
+  for (const item of filteredItems) {
     const lastGroup = groupedByDay.at(-1);
     if (lastGroup && lastGroup[0] === item.itemDate) {
       lastGroup[1].push(item);
@@ -369,48 +490,99 @@ export function ItineraryPanel({ tripId, myRole }: { tripId: string; myRole: Tri
           )}
         </div>
 
-        {sortedItems.length === 0 && (
+        {sortedItems.length > 0 && (
+          <div className="mb-4 flex flex-col gap-3 sm:flex-row">
+            <input
+              type="text"
+              placeholder="Buscar por titulo ou local"
+              value={searchFilter}
+              onChange={(e) => setSearchFilter(e.target.value)}
+              className="flex-1 rounded-lg border border-cream-300 px-3 py-2 text-sm text-navy-900 shadow-sm outline-none
+                focus:border-brand-500 focus:ring-1 focus:ring-brand-500"
+            />
+            <select
+              value={typeFilter}
+              onChange={(e) => setTypeFilter(e.target.value)}
+              className="rounded-lg border border-cream-300 px-3 py-2 text-sm text-navy-900 shadow-sm outline-none
+                focus:border-brand-500 focus:ring-1 focus:ring-brand-500"
+            >
+              <option value="">Todos os tipos</option>
+              {Object.entries(itineraryItemTypeLabels).map(([value, label]) => (
+                <option key={value} value={value}>
+                  {label}
+                </option>
+              ))}
+            </select>
+            {hasItineraryFilters && (
+              <button
+                type="button"
+                onClick={() => {
+                  setTypeFilter("");
+                  setSearchFilter("");
+                }}
+                className="shrink-0 self-center text-xs font-medium text-brand-700 hover:underline"
+              >
+                Limpar filtros
+              </button>
+            )}
+          </div>
+        )}
+
+        {filteredItems.length === 0 && (
           <p className="flex items-center gap-2 text-sm text-navy-700/70">
             <FlightTrail className="h-5 w-8 shrink-0 text-brand-600/40" />
-            Nenhum item no roteiro ainda.
+            {hasItineraryFilters ? "Nenhum item encontrado com esses filtros." : "Nenhum item no roteiro ainda."}
           </p>
         )}
 
-        {sortedItems.length > 0 && viewMode === "all" && (
+        {filteredItems.length > 0 && viewMode === "all" && (
           <ul className="flex flex-col divide-y divide-cream-200">
-            {sortedItems.map((item) => (
+            {filteredItems.map((item) => (
               <ItineraryItemRow
                 key={item.id}
                 item={item}
                 canEdit={canEdit}
                 showDate
+                currency={currency}
+                reservations={reservationsByItemId.get(item.id) ?? []}
                 onEdit={startEdit}
                 onDelete={(id) => deleteItem.mutate(id)}
                 onShowMap={setMapModalItem}
                 isDeleting={deleteItem.isPending}
+                onAddReservation={(itemId) => setReservationModal({ lockedItineraryItemId: itemId })}
+                onEditReservation={(reservation) => setReservationModal({ initial: reservation })}
+                onDeleteReservation={(id) => deleteReservation.mutate(id)}
+                isDeletingReservation={deleteReservation.isPending}
+                onLaunchExpense={onLaunchExpense}
               />
             ))}
           </ul>
         )}
 
-        {sortedItems.length > 0 && viewMode === "byDay" && (
+        {filteredItems.length > 0 && viewMode === "byDay" && (
           <div className="flex flex-col gap-6">
-            {groupedByDay.map(([date, dayItems], index) => (
-              <div key={date}>
+            {groupedByDay.map(([date, dayItems], index) => {
+              const isToday = isOngoing && date === todayIso;
+              return (
+              <div key={date} className={isToday ? "-mx-3 rounded-xl border border-brand-200 bg-brand-50/40 px-3 py-2" : undefined}>
                 <div className="mb-1 flex items-center justify-between gap-2 border-b border-brand-100 pb-2">
                   <div className="flex items-baseline gap-2">
                     <span className="rounded-full bg-brand-600 px-2.5 py-0.5 text-xs font-semibold text-white">Dia {index + 1}</span>
                     <span className="text-sm font-medium text-navy-900">{formatDate(date)}</span>
+                    {isToday && <Badge tone="success">Hoje</Badge>}
                   </div>
-                  {dayItems.some((item) => item.latitude != null && item.longitude != null) && (
+                  <div className="flex items-center gap-3">
                     <button
                       type="button"
-                      onClick={() => setDayMapDate(date)}
+                      onClick={() => setDaySummaryDate(date)}
                       className="text-xs font-medium text-brand-700 hover:underline"
                     >
-                      Ver mapa do dia
+                      Resumo do dia
                     </button>
-                  )}
+                    {dayItems.some((item) => item.latitude != null && item.longitude != null) && (
+                      <MapLinkButton onClick={() => setDayMapDate(date)}>Ver mapa do dia</MapLinkButton>
+                    )}
+                  </div>
                 </div>
                 <ul className="flex flex-col divide-y divide-cream-200">
                   {dayItems.map((item) => (
@@ -419,15 +591,23 @@ export function ItineraryPanel({ tripId, myRole }: { tripId: string; myRole: Tri
                       item={item}
                       canEdit={canEdit}
                       showDate={false}
+                      currency={currency}
+                      reservations={reservationsByItemId.get(item.id) ?? []}
                       onEdit={startEdit}
                       onDelete={(id) => deleteItem.mutate(id)}
                       onShowMap={setMapModalItem}
                       isDeleting={deleteItem.isPending}
+                      onAddReservation={(itemId) => setReservationModal({ lockedItineraryItemId: itemId })}
+                      onEditReservation={(reservation) => setReservationModal({ initial: reservation })}
+                      onDeleteReservation={(id) => deleteReservation.mutate(id)}
+                      isDeletingReservation={deleteReservation.isPending}
+                      onLaunchExpense={onLaunchExpense}
                     />
                   ))}
                 </ul>
               </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </Card>
@@ -450,6 +630,59 @@ export function ItineraryPanel({ tripId, myRole }: { tripId: string; myRole: Tri
           date={dayMapDate}
           items={groupedByDay.find(([date]) => date === dayMapDate)?.[1] ?? []}
           onClose={() => setDayMapDate(null)}
+        />
+      )}
+
+      {daySummaryDate && (
+        <DaySummaryModal
+          date={daySummaryDate}
+          items={groupedByDay.find(([date]) => date === daySummaryDate)?.[1] ?? []}
+          reservationsByItemId={reservationsByItemId}
+          currency={currency}
+          onClose={() => setDaySummaryDate(null)}
+        />
+      )}
+
+      <Card>
+        <div className="mb-4 flex items-center justify-between">
+          <h2 className="font-display text-lg font-medium text-navy-900">Reservas sem item vinculado</h2>
+          {canEdit && (
+            <Button variant="secondary" onClick={() => setReservationModal({})}>
+              Nova reserva
+            </Button>
+          )}
+        </div>
+
+        {unlinkedReservations.length === 0 ? (
+          <p className="flex items-center gap-2 text-sm text-navy-700/70">
+            <FlightTrail className="h-5 w-8 shrink-0 text-brand-600/40" />
+            Nenhuma reserva avulsa - reservas de voo, hospedagem ou carro que nao estao ligadas a um item do roteiro aparecem aqui.
+          </p>
+        ) : (
+          <div className="flex flex-col gap-2">
+            {unlinkedReservations.map((reservation) => (
+              <ReservationSummary
+                key={reservation.id}
+                reservation={reservation}
+                currency={currency}
+                canEdit={canEdit}
+                onEdit={(r) => setReservationModal({ initial: r })}
+                onDelete={(id) => deleteReservation.mutate(id)}
+                isDeleting={deleteReservation.isPending}
+                onLaunchExpense={onLaunchExpense}
+              />
+            ))}
+          </div>
+        )}
+      </Card>
+
+      {reservationModal && (
+        <ReservationFormModal
+          tripId={tripId}
+          itineraryItems={sortedItems}
+          lockedItineraryItemId={reservationModal.lockedItineraryItemId}
+          initial={reservationModal.initial ?? null}
+          onClose={() => setReservationModal(null)}
         />
       )}
     </div>
