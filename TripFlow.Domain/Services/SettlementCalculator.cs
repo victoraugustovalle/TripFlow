@@ -19,7 +19,12 @@ public static class SettlementCalculator
 {
     private const decimal Epsilon = 0.01m;
 
-    public static IReadOnlyList<ParticipantBalance> CalculateBalances(IEnumerable<Expense> expenses)
+    /// <summary>Confirmed settlements (opcional) sao quitacoes reais ja confirmadas pelo credor -
+    /// entram na conta como se o devedor tivesse "pago" o valor e o credor "devesse" ele de
+    /// volta, cancelando exatamente o debito original (mesma equivalencia usada no teste
+    /// Simplify_TodoMundoQuitado, so que sem precisar criar um Expense fake pra isso).</summary>
+    public static IReadOnlyList<ParticipantBalance> CalculateBalances(
+        IEnumerable<Expense> expenses, IEnumerable<SettlementRecord>? confirmedSettlements = null)
     {
         var paid = new Dictionary<Guid, decimal>();
         var owed = new Dictionary<Guid, decimal>();
@@ -32,6 +37,12 @@ public static class SettlementCalculator
             {
                 owed[split.ParticipantId] = owed.GetValueOrDefault(split.ParticipantId) + split.ShareAmount;
             }
+        }
+
+        foreach (var settlement in confirmedSettlements ?? [])
+        {
+            paid[settlement.FromParticipantId] = paid.GetValueOrDefault(settlement.FromParticipantId) + settlement.Amount;
+            owed[settlement.ToParticipantId] = owed.GetValueOrDefault(settlement.ToParticipantId) + settlement.Amount;
         }
 
         var participantIds = paid.Keys.Union(owed.Keys).Distinct();

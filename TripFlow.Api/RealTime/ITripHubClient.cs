@@ -18,6 +18,8 @@ public interface ITripHubClient
 
     Task ActivityCreated(ActivityLogEntryDto entry);
 
+    Task SettlementChanged();
+
     /// <summary>Lista completa de quem esta com essa viagem aberta agora (nao um delta) - mais
     /// simples pro cliente so substituir o estado local do que reconciliar entra/sai.</summary>
     Task PresenceChanged(IReadOnlyList<PresenceUser> onlineUsers);

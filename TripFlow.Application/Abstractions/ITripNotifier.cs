@@ -25,4 +25,8 @@ public interface ITripNotifier
     /// <summary>Avisa quem estiver com a viagem aberta que um evento novo entrou na timeline -
     /// com payload, pra inserir direto na lista sem precisar de um refetch.</summary>
     Task NotifyActivityCreatedAsync(Guid tripId, ActivityLogEntryDto entry, CancellationToken cancellationToken = default);
+
+    /// <summary>Sinal generico pra qualquer mudanca no settlement (quitacao marcada como paga
+    /// ou confirmada) - sem payload, o cliente recalcula buscando GET .../expenses/settlement de novo.</summary>
+    Task NotifySettlementChangedAsync(Guid tripId, CancellationToken cancellationToken = default);
 }

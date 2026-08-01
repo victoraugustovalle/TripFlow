@@ -36,5 +36,8 @@ public class SignalRTripNotifier : ITripNotifier
     public Task NotifyActivityCreatedAsync(Guid tripId, ActivityLogEntryDto entry, CancellationToken cancellationToken = default) =>
         Group(tripId).ActivityCreated(entry);
 
+    public Task NotifySettlementChangedAsync(Guid tripId, CancellationToken cancellationToken = default) =>
+        Group(tripId).SettlementChanged();
+
     private ITripHubClient Group(Guid tripId) => _hubContext.Clients.Group(TripHub.GroupName(tripId));
 }

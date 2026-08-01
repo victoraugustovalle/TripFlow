@@ -38,6 +38,7 @@ public static class DependencyInjection
         services.AddScoped<TwoFactorService>();
         services.AddScoped<NotificationService>();
         services.AddScoped<ActivityService>();
+        services.AddScoped<SettlementService>();
 
         return services;
     }

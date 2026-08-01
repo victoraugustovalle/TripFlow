@@ -29,6 +29,7 @@ public class TripFlowDbContext : DbContext, IAppDbContext
     public DbSet<Notification> Notifications => Set<Notification>();
     public DbSet<NotificationMute> NotificationMutes => Set<NotificationMute>();
     public DbSet<ActivityLogEntry> ActivityLogEntries => Set<ActivityLogEntry>();
+    public DbSet<SettlementRecord> SettlementRecords => Set<SettlementRecord>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
