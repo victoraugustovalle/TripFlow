@@ -4,6 +4,7 @@ using System.Net.Http.Json;
 using FluentAssertions;
 using TripFlow.Api.Controllers;
 using TripFlow.Application.Auth.DTOs;
+using TripFlow.Application.Common;
 using TripFlow.Application.Documents.DTOs;
 using TripFlow.Application.Itinerary.DTOs;
 using TripFlow.Application.Participants.DTOs;
@@ -145,8 +146,8 @@ public class Phase2LifecycleTests : IDisposable
         document!.FileName.Should().Be("passaporte.pdf");
 
         var listResponse = await owner.GetAsync($"/api/trips/{tripId}/documents");
-        var list = await listResponse.Content.ReadFromJsonAsync<List<DocumentDto>>();
-        list.Should().ContainSingle(d => d.Id == document.Id);
+        var list = await listResponse.Content.ReadFromJsonAsync<PagedResult<DocumentDto>>();
+        list!.Items.Should().ContainSingle(d => d.Id == document.Id);
 
         var downloadResponse = await owner.GetAsync($"/api/trips/{tripId}/documents/{document.Id}/download");
         downloadResponse.StatusCode.Should().Be(HttpStatusCode.OK);
@@ -157,8 +158,8 @@ public class Phase2LifecycleTests : IDisposable
         deleteResponse.StatusCode.Should().Be(HttpStatusCode.NoContent);
 
         var listAfterDeleteResponse = await owner.GetAsync($"/api/trips/{tripId}/documents");
-        var listAfterDelete = await listAfterDeleteResponse.Content.ReadFromJsonAsync<List<DocumentDto>>();
-        listAfterDelete.Should().BeEmpty();
+        var listAfterDelete = await listAfterDeleteResponse.Content.ReadFromJsonAsync<PagedResult<DocumentDto>>();
+        listAfterDelete!.Items.Should().BeEmpty();
     }
 
     [Fact]
@@ -178,8 +179,8 @@ public class Phase2LifecycleTests : IDisposable
         uploadResponse.StatusCode.Should().Be(HttpStatusCode.BadRequest);
 
         var listResponse = await owner.GetAsync($"/api/trips/{tripId}/documents");
-        var list = await listResponse.Content.ReadFromJsonAsync<List<DocumentDto>>();
-        list.Should().BeEmpty();
+        var list = await listResponse.Content.ReadFromJsonAsync<PagedResult<DocumentDto>>();
+        list!.Items.Should().BeEmpty();
     }
 
     [Fact]

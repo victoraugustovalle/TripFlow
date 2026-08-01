@@ -77,7 +77,7 @@ public class RealTimeTests : IDisposable
         await guestConnection.InvokeAsync("JoinTrip", trip.Id);
 
         var createExpenseResponse = await owner.PostAsJsonAsync($"/api/trips/{trip.Id}/expenses", new CreateExpenseRequest(
-            "Jantar", 100m, "Alimentacao", guestParticipant!.Id, DateOnly.FromDateTime(DateTime.UtcNow), null));
+            "Jantar", 100m, "Alimentacao", guestParticipant!.Id, DateOnly.FromDateTime(DateTime.UtcNow), null, null));
         createExpenseResponse.StatusCode.Should().Be(HttpStatusCode.OK);
         var createdExpense = await createExpenseResponse.Content.ReadFromJsonAsync<ExpenseDto>();
 
