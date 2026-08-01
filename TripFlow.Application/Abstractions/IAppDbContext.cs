@@ -28,6 +28,7 @@ public interface IAppDbContext
     DbSet<ActivityLogEntry> ActivityLogEntries { get; }
     DbSet<SettlementRecord> SettlementRecords { get; }
     DbSet<TripMemory> TripMemories { get; }
+    DbSet<ProactiveNudgeLog> ProactiveNudgeLogs { get; }
 
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 }

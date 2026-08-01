@@ -4,6 +4,7 @@ using Serilog;
 using Serilog.Formatting.Compact;
 using TripFlow.Api.Authentication;
 using TripFlow.Api.Authorization;
+using TripFlow.Api.BackgroundJobs;
 using TripFlow.Api.RateLimiting;
 using TripFlow.Api.RealTime;
 using TripFlow.Api.Swagger;
@@ -43,6 +44,12 @@ builder.Services.AddCors(options =>
 });
 
 builder.Services.AddHealthChecks();
+
+// So roda contra o banco real - os testes de integracao usam WebApplicationFactory com um
+// DbContext isolado por teste, e um job em background com seu proprio escopo/conexao entraria
+// em conflito com isso sem trazer nenhum valor pro teste em si.
+if (!builder.Environment.IsEnvironment("Testing"))
+    builder.Services.AddHostedService<ProactiveNotificationsHostedService>();
 
 // O IP do cliente (usado pelo rate limiter e pelo CreatedByIp do refresh token) so vem
 // certo se a gente confiar no X-Forwarded-For do proxy na frente (Fly.io, etc.) - sem

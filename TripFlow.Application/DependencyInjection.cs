@@ -47,6 +47,7 @@ public static class DependencyInjection
         services.AddScoped<TripReadinessService>();
         services.AddScoped<OverviewService>();
         services.AddScoped<JournalService>();
+        services.AddScoped<ProactiveNotificationService>();
 
         return services;
     }
