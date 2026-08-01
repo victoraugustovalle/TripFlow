@@ -16,4 +16,8 @@ public interface ITripNotifier
     Task NotifyChecklistItemCreatedAsync(Guid tripId, ChecklistItemDto item, CancellationToken cancellationToken = default);
     Task NotifyChecklistItemUpdatedAsync(Guid tripId, ChecklistItemDto item, CancellationToken cancellationToken = default);
     Task NotifyChecklistItemDeletedAsync(Guid tripId, Guid itemId, CancellationToken cancellationToken = default);
+
+    /// <summary>Avisa quem estiver com a viagem aberta que uma notificacao nova foi criada - sem
+    /// payload, so um sinal pra recarregar a lista (o conteudo em si vem do GET /api/notifications).</summary>
+    Task NotifyNotificationCreatedAsync(Guid tripId, CancellationToken cancellationToken = default);
 }

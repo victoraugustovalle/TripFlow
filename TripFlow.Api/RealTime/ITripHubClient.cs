@@ -12,4 +12,6 @@ public interface ITripHubClient
     Task ChecklistItemCreated(ChecklistItemDto item);
     Task ChecklistItemUpdated(ChecklistItemDto item);
     Task ChecklistItemDeleted(Guid itemId);
+
+    Task NotificationCreated();
 }

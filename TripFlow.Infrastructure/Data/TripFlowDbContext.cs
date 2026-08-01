@@ -26,6 +26,8 @@ public class TripFlowDbContext : DbContext, IAppDbContext
     public DbSet<Reservation> Reservations => Set<Reservation>();
     public DbSet<Document> Documents => Set<Document>();
     public DbSet<TwoFactorRecoveryCode> TwoFactorRecoveryCodes => Set<TwoFactorRecoveryCode>();
+    public DbSet<Notification> Notifications => Set<Notification>();
+    public DbSet<NotificationMute> NotificationMutes => Set<NotificationMute>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

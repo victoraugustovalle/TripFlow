@@ -29,5 +29,8 @@ public class SignalRTripNotifier : ITripNotifier
     public Task NotifyChecklistItemDeletedAsync(Guid tripId, Guid itemId, CancellationToken cancellationToken = default) =>
         Group(tripId).ChecklistItemDeleted(itemId);
 
+    public Task NotifyNotificationCreatedAsync(Guid tripId, CancellationToken cancellationToken = default) =>
+        Group(tripId).NotificationCreated();
+
     private ITripHubClient Group(Guid tripId) => _hubContext.Clients.Group(TripHub.GroupName(tripId));
 }

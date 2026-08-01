@@ -3,6 +3,7 @@ import * as authApi from "../api/auth";
 import { useAuthStore } from "../auth/authStore";
 import { Button } from "../components/Button";
 import { FlightTrail } from "../components/FlightTrail";
+import { NotificationBell } from "../notifications/NotificationBell";
 
 export function AppLayout() {
   const navigate = useNavigate();
@@ -26,7 +27,8 @@ export function AppLayout() {
           <Link to="/" className="font-display text-xl font-extrabold text-brand-700">
             TripFlow
           </Link>
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2">
+            <NotificationBell />
             <span className="text-sm text-navy-700">{user?.name}</span>
             <Button variant="ghost" onClick={handleLogout}>
               Sair

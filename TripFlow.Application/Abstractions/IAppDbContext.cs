@@ -23,6 +23,8 @@ public interface IAppDbContext
     DbSet<Reservation> Reservations { get; }
     DbSet<Document> Documents { get; }
     DbSet<TwoFactorRecoveryCode> TwoFactorRecoveryCodes { get; }
+    DbSet<Notification> Notifications { get; }
+    DbSet<NotificationMute> NotificationMutes { get; }
 
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 }

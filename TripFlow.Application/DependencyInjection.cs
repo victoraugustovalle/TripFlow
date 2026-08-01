@@ -8,6 +8,7 @@ using TripFlow.Application.Common;
 using TripFlow.Application.Documents;
 using TripFlow.Application.Expenses;
 using TripFlow.Application.Itinerary;
+using TripFlow.Application.Notifications;
 using TripFlow.Application.Participants;
 using TripFlow.Application.Reservations;
 using TripFlow.Application.Trips;
@@ -34,6 +35,7 @@ public static class DependencyInjection
         services.AddScoped<ReservationService>();
         services.AddScoped<DocumentService>();
         services.AddScoped<TwoFactorService>();
+        services.AddScoped<NotificationService>();
 
         return services;
     }
