@@ -43,31 +43,42 @@ npm run lint    # oxlint
 
 ```
 src/api/            chamadas HTTP pra API (uma por domínio) + client.ts (fetch com refresh automático)
-src/auth/           login, registro, confirmação de e-mail, verificação de 2FA, layout de autenticação
-src/trips/          lista de viagens, criar viagem, detalhe da viagem (abas, capa, editar nome, apagar)
+src/auth/           login, registro, confirmação de e-mail, login Google, verificação/setup de 2FA, layout de autenticação
+src/trips/          lista de viagens, criar viagem, detalhe da viagem (abas, capa, editar nome, apagar, presença online)
+src/overview/       visão geral: timeline de atividades, prontidão da viagem, orçamento, saldo, checklist, próximo do roteiro
+src/activity/       timeline de atividades da viagem (componente + hook)
 src/participants/   painel de participantes
-src/expenses/       painel de gastos + settlement ("quem deve pra quem")
-src/checklist/      painel de checklist
-src/itinerary/      painel de roteiro, mapas (item e do dia), geocoding, cálculo de rota
+src/expenses/       painel de gastos, settlement ("quem deve pra quem") com fechamento de dívida, rascunho de gasto vindo de reserva
+src/budgets/        seção de orçamento por categoria (embutida no painel de gastos)
+src/checklist/      painel de checklist, com responsável e prazo
+src/itinerary/      painel de roteiro, mapas (item e do dia), geocoding, cálculo de rota, resumo do dia imprimível
+src/reservations/   formulário e card de reserva
+src/documents/      painel de documentos (upload, download, paginado)
+src/notifications/  sino de notificações (paginado) e modal de preferências por tipo
+src/retrospective/  retrospectiva pós-viagem: números agregados + memórias por participante
 src/components/     componentes de UI compartilhados (Button, Card, Modal, Badge, Avatar, Toaster, Skeleton...)
 src/toast/          store do sistema de toast (zustand)
 src/layouts/        layout autenticado (header) e guarda de rota protegida
-src/realtime/       hook do SignalR
+src/realtime/       hook do SignalR (invalidação de queries, toast de atividade, presença online)
 src/utils/          formatação (moeda, data) e labels dos enums vindos da API
 ```
 
 ## O que já dá pra fazer
 
-- **Login, registro, confirmação de e-mail e verificação de 2FA** (o *setup* do 2FA — ligar/desligar — ainda não tem tela; a API já suporta, ver README principal)
+- **Login, registro, confirmação de e-mail, login com Google e 2FA completo** (setup, ligar/desligar e verificação no login, tudo pela interface)
 - **Viagens**: criar, editar o nome direto no lugar (clique no lápis ao lado do título), apagar (com confirmação por nome digitado, não é só um `confirm()` do navegador), e **definir uma capa** — enviando uma foto do próprio dispositivo (redimensionada e comprimida no navegador antes de enviar) ou buscando uma foto livre de direitos autorais direto de dentro do app, via [Openverse](https://openverse.org)
-- **Participantes**: convidar por e-mail, definir papel (visualizador/editor/dono), remover, com avatar de iniciais e status colorido (convidado/aceito/recusado)
-- **Gastos**: lançar, divisão automática igualitária entre os participantes aceitos, e a tela de "quem deve pra quem" destaca em cor o que diz respeito a você
-- **Checklist**: colaborativo, com atualização em tempo real quando outra pessoa marca ou adiciona um item
-- **Roteiro**: itens por tipo (atividade/transporte/hospedagem/refeição/outro), busca de endereço com autocomplete (geocoding via Nominatim, com debounce por causa do rate limit da API), mapa por item e um mapa do dia inteiro com a rota calculada entre os pontos (OSRM) — inclusive foto do local puxada da Wikipedia quando abre o marcador no mapa
-- **Tempo real via SignalR** pra gastos e checklist — quem estiver com a mesma viagem aberta vê a atualização sem dar F5
+- **Overview como página inicial de verdade**: timeline cronológica de tudo que aconteceu na viagem, indicador de "prontidão" (% da viagem pronta, com lista de pendências que linkam pra aba certa), orçamento, saldo e próximos itens do roteiro
+- **Participantes**: convidar por e-mail, definir papel (visualizador/editor/dono), remover, com avatar de iniciais e status colorido (convidado/aceito/recusado), e ver quem mais está com a viagem aberta agora
+- **Gastos**: lançar, divisão automática igualitária ou customizada, "quem deve pra quem" com **fechamento de dívida** (marcar como pago → a outra ponta confirma), lançar gasto direto a partir de uma reserva com um clique
+- **Orçamento**: planejado vs. gasto real por categoria, com barra de progresso
+- **Checklist**: colaborativo, com responsável e prazo (destaque quando atrasado), atualização em tempo real quando outra pessoa marca ou adiciona um item
+- **Roteiro**: itens por tipo (atividade/transporte/hospedagem/refeição/outro), busca de endereço com autocomplete (geocoding via Nominatim, com debounce por causa do rate limit da API), mapa por item e um mapa do dia inteiro com a rota calculada entre os pontos (OSRM) — inclusive foto do local puxada da Wikipedia quando abre o marcador no mapa — e um resumo do dia pronto pra imprimir
+- **Reservas** (voo/hotel/carro/outro), vinculadas opcionalmente a um item do roteiro
+- **Documentos**: upload validado, download, paginado
+- **Notificações**: sino com contagem de não lidas, paginado, e preferências por tipo (silenciar categorias específicas por viagem)
+- **Retrospectiva**: quando a viagem é marcada como concluída, a Overview vira retrospectiva — total gasto, quem gastou mais, progresso do checklist, e memórias que cada participante registra (melhor momento, nota de 1 a 5, foto)
+- **Tempo real via SignalR** em praticamente tudo, com toast discreto quando é ação de outra pessoa e indicador de quem mais está online na viagem agora
 - **Feedback de toda ação** (toast de sucesso, confirmação por nome pra apagar, skeleton de carregamento no lugar de spinner central pra não pular o layout)
-
-Ainda não tem: login com Google, ligar/desligar 2FA pela interface (só a verificação no login), e telas de documentos, reservas e orçamento (a API já suporta as três — é questão de construir a tela).
 
 ## Identidade visual
 

@@ -4,6 +4,8 @@ API para organizar viagem em grupo: participantes, gastos divididos, checklist, 
 
 Projeto de portfólio focado em backend: o objetivo não é só ter endpoints, é mostrar autenticação e autorização feitas a sério (JWT com rotação e detecção de reuso de refresh token, login com Google, senha com Argon2id, autorização por recurso, rate limiting) num domínio grande o suficiente pra parecer produto de verdade.
 
+Além do CRUD básico, o TripFlow tem uma camada de produto que conecta os módulos entre si: uma timeline de atividades, fechamento social de dívidas ("marcar como pago" → confirmação), um indicador de prontidão da viagem que cruza roteiro/reservas/documentos/checklist, notificações configuráveis por tipo e presença em tempo real (quem mais está com a viagem aberta agora). Ver a seção [Produto](#produto) mais abaixo.
+
 ## Stack
 
 - **.NET 10** — ASP.NET Core Web API (controllers)
@@ -68,7 +70,7 @@ Quem estiver com uma viagem aberta recebe atualização ao vivo quando alguém a
 - **Hub**: `/hubs/trip`
 - **Autenticação**: o token JWT vai via `accessTokenFactory` do cliente SignalR (WebSocket não permite header customizado no handshake do navegador, então o token vai por query string só nesse path)
 - **Uso**: depois de conectar, chama `JoinTrip(tripId)` — o servidor confere se você é participante aceito daquela viagem antes de te colocar no grupo; se não for, a chamada lança `HubException`
-- **Eventos recebidos**: `ExpenseCreated`, `ExpenseDeleted`, `ChecklistItemCreated`, `ChecklistItemUpdated`, `ChecklistItemDeleted`
+- **Eventos recebidos**: `ExpenseCreated`, `ExpenseDeleted`, `ChecklistItemCreated`, `ChecklistItemUpdated`, `ChecklistItemDeleted`, `ItineraryItemCreated`, `ItineraryItemUpdated`, `ItineraryItemDeleted`, `ReservationCreated`, `ReservationUpdated`, `ReservationDeleted`, `ParticipantsChanged`, `NotificationCreated`, `ActivityCreated`, `SettlementChanged`, `PresenceChanged`
 
 Exemplo (cliente JS):
 
@@ -79,10 +81,25 @@ const connection = new signalR.HubConnectionBuilder()
 
 connection.on("ExpenseCreated", (expense) => { /* atualiza a lista na tela */ });
 connection.on("ChecklistItemUpdated", (item) => { /* atualiza o item marcado */ });
+connection.on("PresenceChanged", (users) => { /* lista completa de quem esta na viagem agora */ });
 
 await connection.start();
 await connection.invoke("JoinTrip", tripId);
 ```
+
+`PresenceChanged` não é persistido — `TripPresenceTracker` (singleton em memória na Api) rastreia quem entrou/saiu de cada grupo de viagem via `JoinTrip`/`LeaveTrip`/`OnDisconnectedAsync` e manda a lista completa toda vez que ela muda (mais simples pro cliente do que reconciliar um delta).
+
+## Produto
+
+Cada peça abaixo reaproveita a mesma infraestrutura (SignalR, `NotificationService`, o padrão de composição do `OverviewService`) em vez de introduzir camadas novas - a ideia foi ligar os módulos que já existiam, não empilhar mais um.
+
+- **Timeline da viagem** (`ActivityLogEntry`) — cada ação relevante (gasto lançado, item do checklist atribuído, reserva criada, quitação confirmada...) vira uma entrada cronológica, gravada no mesmo ponto onde o service já chama `ITripNotifier`. `GET /api/trips/{tripId}/activity`, paginado, com o autor resolvido no momento (sobrevive à remoção do participante depois).
+- **Fechar dívida — "Quitar"** (`SettlementRecord`) — o `SettlementCalculator` já dizia quem devia quanto; agora o devedor pode marcar uma transferência como paga (`POST .../settlement/mark-paid`) e o credor confirma (`POST .../settlement/{id}/confirm`). Uma quitação confirmada entra no cálculo de saldo como se fosse um gasto reverso — mesma lógica testada em `SettlementCalculatorTests`, sem reescrever nada. Sem gateway de pagamento real: é honestidade mútua, com notificação pros dois lados.
+- **Prontidão da viagem** (`TripReadinessService`) — cruza `ItineraryItemType`, `ReservationType`, `DocumentCategory` e o progresso de `ChecklistItem`/`Budget` em regras explícitas (nada de IA/heurística vaga) pra responder "essa viagem está pronta?": tem roteiro? orçamento definido? checklist concluído? reserva de voo internacional com passaporte anexado? Cada pendência aponta pra aba certa do frontend.
+- **Notificações expandidas + preferências por tipo** — além dos gatilhos originais (convite aceito, item de checklist atribuído), agora notifica gasto lançado, orçamento estourado, reserva criada/atualizada, item do roteiro atualizado, documento removido e os dois eventos de quitação — sempre pra quem não foi o autor da ação. Cada notificação carrega um `NotificationType`, e cada participante pode silenciar tipos específicos por viagem (`NotificationMute`, `GET`/`PUT /api/trips/{tripId}/notification-preferences`) sem afetar os outros participantes.
+- **Reserva → Despesa em um clique** — o frontend pré-popula o formulário de gasto a partir de `Reservation.Price`/`Currency`, sem endpoint novo.
+- **Retrospectiva enriquecida** (`TripMemory`) — além dos números agregados (total gasto, quem gastou mais, progresso do checklist), cada participante pode registrar seu próprio "melhor momento", uma nota de 1 a 5 e uma foto (`PUT /api/trips/{tripId}/retrospective/memory`, upsert). A retrospectiva mostra a média das notas do grupo.
+- **Presença em tempo real** — ver quem mais está com a viagem aberta agora, via `TripPresenceTracker` (ver seção de SignalR acima).
 
 ## Swagger
 
@@ -156,14 +173,15 @@ Os testes de integração usam SQLite em memória (não precisam do Postgres rod
 
 ## Frontend
 
-[`tripflow-web/`](tripflow-web/) — React + TypeScript + Vite + Tailwind consumindo essa API. Cobre login/registro/confirmação de e-mail/2FA, viagens (com capa — upload do dispositivo ou busca de foto na web), participantes, gastos com settlement, checklist e roteiro com geocoding e mapas, boa parte com atualização em tempo real via SignalR. Tem identidade visual e sistema de design próprios (não é um template genérico de admin). Detalhes de como rodar, decisões de UI e o que ainda falta em [tripflow-web/README.md](tripflow-web/README.md).
+[`tripflow-web/`](tripflow-web/) — React + TypeScript + Vite + Tailwind consumindo essa API. Cobre login/registro/confirmação de e-mail/Google/2FA (setup e desligar pela interface), viagens (com capa — upload do dispositivo ou busca de foto na web), participantes, gastos com settlement e fechamento de dívida, orçamento, checklist com responsável/prazo, roteiro com geocoding/mapas/resumo do dia imprimível, reservas, documentos, notificações com preferências por tipo, retrospectiva enriquecida (melhor momento/nota/foto) e uma Overview com timeline de atividades + indicador de prontidão da viagem — praticamente tudo com atualização em tempo real via SignalR, incluindo toast discreto pra ação de outra pessoa e indicador de quem mais está na viagem agora. Tem identidade visual e sistema de design próprios (não é um template genérico de admin). Detalhes de como rodar e decisões de UI em [tripflow-web/README.md](tripflow-web/README.md).
 
 ## Roadmap
 
 - [x] **Fase 1** — autenticação completa (JWT + refresh + Google), Viagem, Participantes, Gastos + Orçamento, Checklist
 - [x] **Fase 2** — Roteiro, Mapa (geocoding via Nominatim), Documentos (upload validado + storage externo), Reservas vinculadas ao roteiro
 - [x] **Fase 3** — tempo real (SignalR — gastos e checklist), 2FA (TOTP), capa de viagem (upload ou busca de foto), frontend cobrindo auth/viagens/participantes/gastos/checklist/roteiro+mapa
-- [ ] **Fase 4** — telas de Documentos, Reservas e Orçamento no frontend (a API já suporta tudo isso), login com Google e 2FA configuráveis pela interface, notificações
+- [x] **Fase 4** — telas de Documentos, Reservas e Orçamento no frontend, login com Google e setup/desligar 2FA pela interface, notificações in-app
+- [x] **Fase 5** — timeline de atividades, fechamento de dívida ("Quitar"), prontidão da viagem, notificações expandidas + preferências por tipo, reserva→despesa em um clique, retrospectiva enriquecida (melhor momento/nota/foto por participante), presença em tempo real, paginação em Documentos/Notificações, toast de tempo real, responsável/prazo do checklist na UI, resumo do dia imprimível
 
 ## Deploy
 

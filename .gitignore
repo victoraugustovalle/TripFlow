@@ -9,6 +9,7 @@ out/
 .vs/
 .vscode/
 .idea/
+.claude/
 *.swp
 
 ## Secrets - nunca comitar valor real, só o appsettings.json com placeholder
